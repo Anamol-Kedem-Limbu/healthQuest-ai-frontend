@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Home, Trophy, HeartPulse, Settings, MessageSquare, Crown, FileText } from "lucide-react";
+import { X, Home, Trophy, HeartPulse, Settings, MessageSquare, Crown, FileText, Bell } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Crown },
   { href: "/dashboard/health/report", label: "Reports", icon: FileText },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
+  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
@@ -31,26 +32,22 @@ function NavEntry({
   return (
     <Link
       href={href}
-      className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+      className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
         active
-          ? "bg-gradient-to-r from-[var(--accent)]/10 to-[var(--accent)]/5 text-[var(--text)] shadow-sm ring-1 ring-[var(--accent)]/20"
-          : "text-[var(--muted)] hover:bg-[var(--bg-soft)] hover:text-[var(--text)]"
-      } ${collapsed ? "justify-center px-2" : ""}`}
+          ? "bg-[var(--accent)] text-white shadow-md"
+          : "text-[var(--muted)] hover:text-[var(--text)] hover:bg-white/50"
+      } ${collapsed ? "justify-center px-2.5" : ""}`}
     >
-      {/* Active pill indicator (only expanded) */}
-      {active && !collapsed && (
-        <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[var(--accent)]" />
-      )}
       <span
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-xl transition-all ${
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
           active
-            ? "bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/30"
-            : "bg-[var(--bg-soft)] text-[var(--accent)] group-hover:bg-[var(--accent)]/10"
+            ? "bg-white/20"
+            : "bg-transparent group-hover:bg-[var(--accent)]/10"
         }`}
       >
-        <Icon size={18} />
+        <Icon size={18} strokeWidth={2} />
       </span>
-      <span className={`${collapsed ? "hidden" : "block"} whitespace-nowrap`}>{label}</span>
+      {!collapsed && <span className="truncate font-medium">{label}</span>}
     </Link>
   );
 }
@@ -58,11 +55,9 @@ function NavEntry({
 function DesktopSidebar({
   pathname,
   open,
-  onToggle,
 }: {
   pathname: string | null;
   open: boolean;
-  onToggle: () => void;
 }) {
   const { user } = useAuth();
   const displayName = user?.display_name?.trim() || user?.email || "Guest";
@@ -70,23 +65,22 @@ function DesktopSidebar({
 
   return (
     <aside
-      className={`hidden lg:flex lg:flex-col ${
+      className={`${
         open ? "w-64" : "w-20"
-      } fixed top-16 left-0 bottom-0 z-40 border-r border-[var(--panel-border)] bg-white/85 backdrop-blur-lg px-3 py-5 shadow-xl shadow-black/5 transition-all duration-300`}
+      } hidden lg:flex lg:flex-col fixed top-16 left-0 bottom-0 z-40 border-r border-[var(--panel-border)] bg-white backdrop-blur-sm transition-all duration-300`}
     >
-      {/* Brand (only expanded) */}
-      <div className={`mb-6 flex items-center ${open ? "justify-start" : "justify-center"}`}>
-        <div
-          className={`text-sm font-bold uppercase tracking-[0.2em] text-[var(--accent)] ${
-            open ? "block" : "sr-only"
-          }`}
-        >
-          HealthQuest
+      {/* Brand area */}
+      {open && (
+        <div className="px-4 py-4 border-b border-[var(--panel-border)]">
+          <div className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--accent)]">
+            HealthQuest
+          </div>
+          <div className="text-[10px] text-[var(--muted)] mt-1">Wellness Platform</div>
         </div>
-      </div>
+      )}
 
-      {/* Scrollable navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--accent)]/20 scrollbar-track-transparent pb-2">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
         {navItems.map((item) => {
           const active = pathname === item.href;
           return (
@@ -102,25 +96,23 @@ function DesktopSidebar({
         })}
       </nav>
 
-      {/* User profile – always at bottom */}
-      <div
-        className={`mt-4 border-t border-[var(--panel-border)] pt-4 transition-opacity duration-200 ${
-          open ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-      >
-        <Link
-          href="/dashboard/settings"
-          className="group flex items-center gap-3 rounded-xl p-2 text-sm text-[var(--muted)] transition hover:bg-[var(--bg-soft)]"
-        >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent)] to-purple-500 text-white shadow-md">
-            {displayName.charAt(0).toUpperCase()}
-          </span>
-          <div className="overflow-hidden">
-            <div className="truncate font-semibold text-[var(--text)]">{displayName}</div>
-            <div className="truncate text-[11px] text-[var(--muted)]">{accountSubtext}</div>
-          </div>
-        </Link>
-      </div>
+      {/* User profile section */}
+      {open && (
+        <div className="border-t border-[var(--panel-border)] px-2 py-4">
+          <Link
+            href="/dashboard/settings"
+            className="flex items-center gap-3 rounded-lg p-2 text-sm text-[var(--muted)] transition hover:bg-[var(--accent)]/10 hover:text-[var(--text)]"
+          >
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--accent)] to-teal-600 text-white text-xs font-bold shadow-sm">
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+            <div className="overflow-hidden flex-1">
+              <div className="truncate font-medium text-[var(--text)] text-xs">{displayName}</div>
+              <div className="truncate text-[10px] text-[var(--muted)]">{accountSubtext}</div>
+            </div>
+          </Link>
+        </div>
+      )}
     </aside>
   );
 }
@@ -150,25 +142,29 @@ function MobileSidebar({
 
       {/* Drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col rounded-r-2xl border-r border-[var(--panel-border)] bg-white/90 backdrop-blur-lg px-4 py-5 shadow-2xl transition-transform lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[var(--panel-border)] bg-white backdrop-blur-sm transition-transform lg:hidden ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
-            HealthQuest
+        {/* Header with close button */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[var(--panel-border)]">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--accent)]">
+              HealthQuest
+            </div>
+            <div className="text-[10px] text-[var(--muted)] mt-1">Wellness Platform</div>
           </div>
           <button
             onClick={onClose}
             className="rounded-lg p-2 text-[var(--text)] transition hover:bg-[var(--bg-soft)]"
+            aria-label="Close navigation"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Scrollable navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--accent)]/20 scrollbar-track-transparent pb-2">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (
@@ -184,18 +180,19 @@ function MobileSidebar({
           })}
         </nav>
 
-        {/* User profile – fixed at bottom */}
-        <div className="mt-4 border-t border-[var(--panel-border)] pt-4">
+        {/* User profile section */}
+        <div className="border-t border-[var(--panel-border)] px-2 py-4">
           <Link
             href="/dashboard/settings"
-            className="group flex items-center gap-3 rounded-xl p-2 text-sm text-[var(--muted)] transition hover:bg-[var(--bg-soft)]"
+            className="flex items-center gap-3 rounded-lg p-2 text-sm text-[var(--muted)] transition hover:bg-[var(--accent)]/10 hover:text-[var(--text)]"
+            onClick={onClose}
           >
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent)] to-purple-500 text-white shadow-md">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--accent)] to-teal-600 text-white text-xs font-bold shadow-sm">
               {displayName.charAt(0).toUpperCase()}
-            </span>
-            <div className="overflow-hidden">
-              <div className="truncate font-semibold text-[var(--text)]">{displayName}</div>
-              <div className="truncate text-[11px] text-[var(--muted)]">{accountSubtext}</div>
+            </div>
+            <div className="overflow-hidden flex-1">
+              <div className="truncate font-medium text-[var(--text)] text-xs">{displayName}</div>
+              <div className="truncate text-[10px] text-[var(--muted)]">{accountSubtext}</div>
             </div>
           </Link>
         </div>
@@ -220,7 +217,6 @@ export function Sidebar({
       <DesktopSidebar
         pathname={pathname}
         open={isOpen ?? false}
-        onToggle={onToggleSidebar ?? (() => {})}
       />
       <MobileSidebar pathname={pathname} isOpen={isOpen} onClose={onClose} />
     </>

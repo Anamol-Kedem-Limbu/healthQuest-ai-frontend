@@ -289,6 +289,10 @@ export async function getGoalSuggestions(token: string): Promise<GoalSuggestion[
   return requestJson<GoalSuggestion[]>("/goals/suggestions", { method: "GET" }, token);
 }
 
+export async function getAiGoalSuggestions(token: string): Promise<GoalSuggestion[]> {
+  return requestJson<GoalSuggestion[]>("/goals/suggestions/ai", { method: "POST" }, token);
+}
+
 export async function triageSymptoms(token: string, payload: { symptom_text: string; severity?: number | null; duration_days?: number | null }): Promise<SymptomTriage> {
   return requestJson<SymptomTriage>("/monitor/symptoms/triage", {
     method: "POST",
@@ -465,6 +469,10 @@ export async function createSymptom(token: string, payload: {
   }, token);
 }
 
+export async function deleteSymptom(token: string, symptomId: string): Promise<void> {
+  await requestJson<void>(`/monitor/symptoms/${symptomId}`, { method: "DELETE" }, token);
+}
+
 export async function getPreferences(token: string): Promise<NotificationPreference> {
   return requestJson<NotificationPreference>("/monitor/preferences", { method: "GET" }, token);
 }
@@ -479,6 +487,21 @@ export async function updatePreferences(token: string, payload: {
 }): Promise<NotificationPreference> {
   return requestJson<NotificationPreference>("/monitor/preferences", {
     method: "PUT",
+    body: JSON.stringify(payload),
+  }, token);
+}
+
+export async function saveAllSettings(token: string, payload: {
+  profile?: Record<string, unknown> | null;
+  preferences?: Record<string, unknown> | null;
+  vitals?: Record<string, unknown> | null;
+  symptom?: Record<string, unknown> | null;
+  symptoms?: Record<string, unknown>[] | null;
+  medication?: Record<string, unknown> | null;
+  appointment?: Record<string, unknown> | null;
+}): Promise<{ status: string; saved: string[] }> {
+  return requestJson<{ status: string; saved: string[] }>("/monitor/settings/bulk", {
+    method: "POST",
     body: JSON.stringify(payload),
   }, token);
 }

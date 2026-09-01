@@ -36,10 +36,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <main className="min-h-screen bg-[var(--bg)]">
       <HealthTipPopup tip={healthTip} onDismiss={dismissHealthTip} />
       <Navbar sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
-      <div className="relative">
+      <div className="relative flex flex-col lg:flex-row">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
-        <div className={`transition-all duration-300 ${sidebarOpen ? "lg:ml-64" : "lg:ml-20"}`}>
-          <div className="min-w-0 px-4 py-4 lg:px-8">{children}</div>
+        <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? "lg:ml-64" : "lg:ml-20"}`}>
+          <div className="min-w-0">
+            <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+          </div>
         </div>
       </div>
     </main>

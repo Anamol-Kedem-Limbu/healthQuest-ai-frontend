@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import type { LeaderboardEntry } from "@/lib/types";
 import { Award, Crown, Medal, UserRound } from "lucide-react";
+import { EmptyState, PageHeader, Panel, ui } from "@/components/ui";
 
 export default function LeaderboardPage() {
   const router = useRouter();
@@ -43,137 +44,115 @@ export default function LeaderboardPage() {
 
   const maxPoints = entries.length > 0 ? entries[0].total_points : 1;
 
-  return (
-    <div className="mx-auto max-w-4xl space-y-8 px-4 py-6">
-      {/* Header */}
-      <div className="text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--accent)]">
-          Leaderboard
-        </p>
-        <h1 className="mt-2 text-3xl font-bold text-slate-900">
-          Top contributors
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">
-          See who’s leading the way in health points and habits.
-        </p>
-      </div>
+  const podium = [
+    { icon: Crown, tint: "text-amber-500", ring: "ring-amber-200" },
+    { icon: Medal, tint: "text-[var(--muted)]", ring: "ring-[var(--panel-border)]" },
+    { icon: Award, tint: "text-orange-500", ring: "ring-orange-200" },
+  ];
 
-      {/* Error message */}
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        kicker="Community"
+        title="Leaderboard"
+        description="See who is leading in health points and habits."
+      />
+
       {error && (
-        <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-600">{error}</div>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
       )}
 
-      {/* Loading state */}
       {loading && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => (
             <div
               key={i}
-              className="h-16 animate-pulse rounded-2xl bg-slate-100"
+              className="h-16 animate-pulse rounded-xl border border-[var(--panel-border)] bg-white"
             />
           ))}
         </div>
       )}
 
-      {/* Podium – top 3 highlighted */}
       {!loading && entries.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid gap-4 sm:grid-cols-3">
           {entries.slice(0, 3).map((entry, index) => {
-            const isFirst = index === 0;
-            const isSecond = index === 1;
-            const isThird = index === 2;
-
-            const podiumStyles = isFirst
-              ? "bg-gradient-to-b from-amber-100 to-amber-50 border-amber-200"
-              : isSecond
-              ? "bg-gradient-to-b from-slate-100 to-slate-50 border-slate-200"
-              : "bg-gradient-to-b from-orange-100 to-orange-50 border-orange-200";
-
-            const icon = isFirst ? (
-              <Crown size={24} className="text-amber-500" />
-            ) : isSecond ? (
-              <Medal size={24} className="text-slate-500" />
-            ) : (
-              <Award size={24} className="text-orange-500" />
-            );
-
+            const { icon: Icon, tint, ring } = podium[index];
             return (
               <div
                 key={entry.user_id}
-                className={`relative flex flex-col items-center rounded-[2rem] border p-5 backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-lg ${podiumStyles}`}
+                className={`flex flex-col items-center ${ui.card} p-5 text-center`}
               >
-                <div className="mb-2 text-3xl">{icon}</div>
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-2xl font-bold text-slate-700 shadow-sm">
-                  <UserRound size={28} />
-                </div>
-                <p className="mt-3 text-center font-semibold text-slate-900">
-                  {entry.display_name ?? "User"}
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-600">
-                  {entry.total_points} pts
-                </p>
-                <div className="mt-3 w-full rounded-full bg-white/60 p-1 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                   Rank #{index + 1}
+                </span>
+                <span
+                  className={`mt-3 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--bg-soft)] ring-1 ${ring}`}
+                >
+                  <UserRound size={24} className="text-[var(--muted)]" />
+                </span>
+                <div className="mt-3 flex items-center gap-1.5">
+                  <Icon size={16} className={tint} />
+                  <p className="text-sm font-semibold text-[var(--text)]">
+                    {entry.display_name ?? "User"}
+                  </p>
                 </div>
+                <p className="mt-1 text-lg font-bold text-[var(--text)]">
+                  {entry.total_points}
+                  <span className="ml-1 text-xs font-normal text-[var(--muted)]">pts</span>
+                </p>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Remaining entries – clean list */}
       {!loading && entries.length > 3 && (
-        <div className="overflow-hidden rounded-[2rem] border border-white/50 bg-white/70 backdrop-blur-sm">
-          <div className="p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-800">
-              Others
-            </h2>
-            <div className="space-y-2">
-              {entries.slice(3).map((entry, index) => {
-                const rank = index + 4;
-                const progressPercent = Math.round(
-                  (entry.total_points / maxPoints) * 100
-                );
-                return (
-                  <div
-                    key={entry.user_id}
-                    className="flex items-center justify-between rounded-xl bg-white/60 px-4 py-3 transition hover:bg-white"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
-                        #{rank}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {entry.display_name ?? "User"}
-                        </p>
-                        <div className="mt-1 h-1 w-32 overflow-hidden rounded-full bg-slate-200">
-                          <div
-                            className="h-full rounded-full bg-[var(--accent)]"
-                            style={{ width: `${progressPercent}%` }}
-                          />
-                        </div>
+        <Panel>
+          <p className={ui.kicker}>Standings</p>
+          <h2 className={`mt-2 ${ui.sectionTitle}`}>Everyone else</h2>
+          <div className="mt-4 divide-y divide-[var(--panel-border)]">
+            {entries.slice(3).map((entry, index) => {
+              const rank = index + 4;
+              const progressPercent = Math.max(
+                2,
+                Math.round((entry.total_points / maxPoints) * 100),
+              );
+              return (
+                <div
+                  key={entry.user_id}
+                  className="flex items-center justify-between gap-4 py-3"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-soft)] text-xs font-semibold text-[var(--muted)]">
+                      {rank}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[var(--text)]">
+                        {entry.display_name ?? "User"}
+                      </p>
+                      <div className="mt-1.5 h-1 w-32 overflow-hidden rounded-full bg-[var(--panel-border)]">
+                        <div
+                          className="h-full rounded-full bg-[var(--accent)]"
+                          style={{ width: `${progressPercent}%` }}
+                        />
                       </div>
                     </div>
-                    <span className="rounded-full bg-[var(--accent)]/10 px-3 py-1 text-xs font-semibold text-[var(--accent)]">
-                      {entry.total_points} pts
-                    </span>
                   </div>
-                );
-              })}
-            </div>
+                  <span className={ui.chip}>{entry.total_points} pts</span>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        </Panel>
       )}
 
-      {/* Empty state */}
-      {!loading && entries.length === 0 && (
-        <div className="rounded-[2rem] border border-dashed border-slate-200 bg-white/40 p-10 text-center backdrop-blur-sm">
-          <p className="text-sm text-slate-500">
-            Leaderboard is empty. Start earning points by completing goals and
-            logging health activities!
-          </p>
-        </div>
+      {!loading && entries.length === 0 && !error && (
+        <EmptyState
+          title="Leaderboard is empty"
+          description="Start earning points by completing goals and logging health activities."
+        />
       )}
     </div>
   );

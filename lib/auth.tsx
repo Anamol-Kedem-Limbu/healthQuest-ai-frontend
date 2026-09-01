@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, AUTH_TOKENS_CHANGED_EVENT, clearAuthTokens, getSessionExpiryTime, getStoredAccessToken, getStoredRefreshToken, login as apiLogin, persistAuthTokens, refreshAccessToken, register as apiRegister, getMe } from "./api";
+import { ApiError, AUTH_TOKENS_CHANGED_EVENT, clearAuthTokens, getSessionExpiryTime, getStoredAccessToken, getStoredRefreshToken, login as apiLogin, persistAuthTokens, refreshAccessToken, register as apiRegister, getMe, getMyProfile } from "./api";
 import { queueNextHealthTip } from "./health-tips";
 import type { UserResponse } from "./types";
 
@@ -11,6 +11,8 @@ type AuthContextValue = {
   user: UserResponse | null;
   loading: boolean;
   initializing: boolean;
+  /** null = not checked yet, false = no usable health profile (must complete setup). */
+  hasProfile: boolean | null;
   login: (email: string, password: string) => Promise<void>;
   register: (payload: {
     email: string;
@@ -21,7 +23,32 @@ type AuthContextValue = {
   }) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  /** Re-check whether the user has filled their health profile. */
+  refreshProfileStatus: () => Promise<void>;
+  /** Mark the profile as complete locally (call right after a successful setup submit). */
+  markProfileComplete: () => void;
 };
+
+/**
+ * A health profile counts as "filled" only when at least one core detail
+ * (age / height / weight) is present. An empty profile row still needs setup.
+ */
+async function checkHasProfile(accessToken: string): Promise<boolean> {
+  try {
+    const profile = await getMyProfile(accessToken);
+    return (
+      profile.age != null ||
+      profile.height_cm != null ||
+      profile.weight_kg != null
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return false;
+    }
+    // On network/other errors, don't lock the user out of the app.
+    return true;
+  }
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -32,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [hasProfile, setHasProfile] = useState<boolean | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,18 +73,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRefreshToken(storedRefreshToken);
         try {
           await refreshUser(storedToken);
+          if (isMounted) {
+            setHasProfile(await checkHasProfile(storedToken));
+          }
         } catch {
           if (!isMounted) return;
           clearAuthTokens();
           setToken(null);
           setRefreshToken(null);
           setUser(null);
+          setHasProfile(null);
         }
       } else {
         clearAuthTokens();
         setToken(null);
         setRefreshToken(null);
         setUser(null);
+        setHasProfile(null);
       }
 
       if (isMounted) {
@@ -102,20 +135,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       persistAuthTokens(tokens.access_token, tokens.refresh_token);
       setToken(tokens.access_token);
       setRefreshToken(tokens.refresh_token);
-      try {
-        const profile = await getMe(tokens.access_token);
-        setUser(profile);
-        queueNextHealthTip();
-        router.replace("/dashboard");
-      } catch (err) {
-        // If the user has no health profile yet, send them to the setup flow
-        if (err instanceof ApiError && err.status === 404) {
-          queueNextHealthTip();
-          router.replace("/setup");
-          return;
-        }
-        throw err;
-      }
+
+      const account = await getMe(tokens.access_token);
+      setUser(account);
+      queueNextHealthTip();
+
+      // New / empty accounts must complete their health details first.
+      const profileFilled = await checkHasProfile(tokens.access_token);
+      setHasProfile(profileFilled);
+      router.replace(profileFilled ? "/dashboard" : "/setup");
     } finally {
       setLoading(false);
     }
@@ -141,8 +169,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setRefreshToken(null);
     setUser(null);
+    setHasProfile(null);
     router.replace("/login");
   };
+
+  const refreshProfileStatus = async () => {
+    if (!token) return;
+    setHasProfile(await checkHasProfile(token));
+  };
+
+  const markProfileComplete = () => setHasProfile(true);
 
   const refreshUser = async (accessTokenOverride?: string) => {
     const currentToken = accessTokenOverride ?? token;
@@ -169,8 +205,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value = useMemo(
-    () => ({ token, user, loading, initializing, login, register, logout, refreshUser }),
-    [token, user, loading, initializing],
+    () => ({
+      token,
+      user,
+      loading,
+      initializing,
+      hasProfile,
+      login,
+      register,
+      logout,
+      refreshUser,
+      refreshProfileStatus,
+      markProfileComplete,
+    }),
+    [token, user, loading, initializing, hasProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

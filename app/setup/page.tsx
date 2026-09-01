@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import {
   createProfile as apiCreateProfile,
+  updateProfile as apiUpdateProfile,
   createVitals as apiCreateVitals,
   createSymptom as apiCreateSymptom,
   updatePreferences as apiUpdatePreferences,
@@ -26,7 +27,17 @@ function computeHydrationIntervalMinutes(litersPerDay: number): number | null {
 
 export default function SetupPage() {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, initializing, hasProfile, markProfileComplete } = useAuth();
+
+  // Not signed in -> login. Already has a profile -> straight to the dashboard.
+  useEffect(() => {
+    if (initializing) return;
+    if (!token) {
+      router.replace("/login");
+    } else if (hasProfile === true) {
+      router.replace("/dashboard");
+    }
+  }, [initializing, token, hasProfile, router]);
   const [heightCm, setHeightCm] = useState<number | "">("");
   const [weightKg, setWeightKg] = useState<number | "">("");
   const [age, setAge] = useState<number | "">("");
@@ -58,25 +69,44 @@ export default function SetupPage() {
   const [medications, setMedications] = useState<Array<{ name: string; dosage?: string }>>([]);
   const [appointments, setAppointments] = useState<Array<{ title: string; scheduled_for: string }>>([]);
 
+  const step1Valid =
+    typeof heightCm === "number" && heightCm > 0 &&
+    typeof weightKg === "number" && weightKg > 0 &&
+    typeof age === "number" && age > 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
     setError(null);
     if (!token) {
       setError("Missing authentication token.");
-      setSubmitting(false);
       return;
     }
+    if (!step1Valid) {
+      setStep(1);
+      setError("Please enter your height, weight, and age to continue.");
+      return;
+    }
+    setSubmitting(true);
 
     try {
-      // 1) Create profile with the core health details required for onboarding completion
-      await apiCreateProfile(token, {
-        height_cm: heightCm === "" ? null : Number(heightCm),
-        weight_kg: weightKg === "" ? null : Number(weightKg),
-        age: age === "" ? null : Number(age),
+      // 1) Create (or update, if an empty profile row already exists) the core
+      //    health details required for onboarding completion.
+      const profilePayload = {
+        height_cm: typeof heightCm === "number" ? heightCm : null,
+        weight_kg: typeof weightKg === "number" ? weightKg : null,
+        age: typeof age === "number" ? age : null,
         body_type: bodyType,
         activity_level: activityLevel,
-      });
+      };
+      try {
+        await apiCreateProfile(token, profilePayload);
+      } catch (profileErr) {
+        if (profileErr instanceof ApiError && profileErr.status === 400) {
+          await apiUpdateProfile(token, profilePayload);
+        } else {
+          throw profileErr;
+        }
+      }
 
       // 2) Create initial vitals if any provided
       if (heartRate !== "" || systolic !== "" || diastolic !== "" || temperatureC !== "" || spo2 !== "") {
@@ -138,6 +168,7 @@ export default function SetupPage() {
         }
       }
 
+      markProfileComplete();
       router.replace("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -195,18 +226,19 @@ export default function SetupPage() {
 
               {step === 1 && (
                 <div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <h3 className="text-sm font-medium">Your basics <span className="text-red-500">*</span> <span className="font-normal text-gray-500">— required to continue</span></h3>
+                  <div className="mt-3 grid grid-cols-3 gap-3">
                     <label className="col-span-1">
-                      <span className="block text-sm text-gray-600">Height (cm)</span>
-                      <input className="mt-1 w-full rounded-md border px-3 py-2" type="number" value={heightCm as any} onChange={(e) => setHeightCm(e.target.value === "" ? "" : Number(e.target.value))} />
+                      <span className="block text-sm text-gray-600">Height (cm) *</span>
+                      <input required className="mt-1 w-full rounded-md border px-3 py-2" type="number" min={1} value={heightCm as any} onChange={(e) => setHeightCm(e.target.value === "" ? "" : Number(e.target.value))} />
                     </label>
                     <label className="col-span-1">
-                      <span className="block text-sm text-gray-600">Weight (kg)</span>
-                      <input className="mt-1 w-full rounded-md border px-3 py-2" type="number" value={weightKg as any} onChange={(e) => setWeightKg(e.target.value === "" ? "" : Number(e.target.value))} />
+                      <span className="block text-sm text-gray-600">Weight (kg) *</span>
+                      <input required className="mt-1 w-full rounded-md border px-3 py-2" type="number" min={1} value={weightKg as any} onChange={(e) => setWeightKg(e.target.value === "" ? "" : Number(e.target.value))} />
                     </label>
                     <label className="col-span-1">
-                      <span className="block text-sm text-gray-600">Age</span>
-                      <input className="mt-1 w-full rounded-md border px-3 py-2" type="number" value={age as any} onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))} />
+                      <span className="block text-sm text-gray-600">Age *</span>
+                      <input required className="mt-1 w-full rounded-md border px-3 py-2" type="number" min={1} value={age as any} onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))} />
                     </label>
                   </div>
 
@@ -371,7 +403,21 @@ export default function SetupPage() {
                 )}
 
                 {step < 5 && (
-                  <button type="button" onClick={() => setStep((s) => s + 1)} className="rounded-md bg-gray-100 px-4 py-2">Next</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (step === 1 && !step1Valid) {
+                        setError("Please enter your height, weight, and age to continue.");
+                        return;
+                      }
+                      setError(null);
+                      setStep((s) => s + 1);
+                    }}
+                    disabled={step === 1 && !step1Valid}
+                    className="rounded-md bg-gray-100 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next
+                  </button>
                 )}
 
                 {step === 5 && (

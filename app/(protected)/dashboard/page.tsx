@@ -6,36 +6,27 @@ import { useAuth } from "@/lib/auth";
 import type { AnalyticsTrendPayload, Badge, Dashboard } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import {
-  Activity,
   BadgeCheck,
   Bot,
-  CalendarDays,
-  Compass,
   Flame,
   HeartPulse,
-  Sparkles,
+  RefreshCw,
   Target,
   Trophy,
   Waves,
 } from "lucide-react";
-import {
-  Card,
-  EmptyState,
-  GoalProgressRing,
-  LoadingSection,
-  Panel,
-  SectionHeader,
-} from "@/components/ui";
+import { GoalProgressRing, LoadingSection, Panel } from "@/components/ui";
 import { useToasts, ToastContainer } from "@/components/Toast";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { token, logout } = useAuth();
-  const { toasts, removeToast, success, error } = useToasts();
+  const { toasts, removeToast } = useToasts();
   const [data, setData] = useState<Dashboard | null>(null);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [trends, setTrends] = useState<AnalyticsTrendPayload | null>(null);
   const [trendsLoading, setTrendsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
   useEffect(() => {
@@ -62,7 +53,7 @@ export default function DashboardPage() {
       try {
         const trendData = await getHealthTrends(token);
         if (mounted) setTrends(trendData);
-      } catch (e) {
+      } catch {
         // ignore
       } finally {
         if (mounted) setTrendsLoading(false);
@@ -89,10 +80,13 @@ export default function DashboardPage() {
 
   const refreshDashboard = async () => {
     if (!token) return;
+    setRefreshing(true);
     try {
       setData(await getDashboard(token));
     } catch {
       // ignore
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -105,13 +99,13 @@ export default function DashboardPage() {
       return "Consistency is your superpower. Try to lock in one small healthy habit today to extend your streak.";
     }
     if (name.includes("sleep")) {
-      return "A steady bedtime routine helps cement this progress. Wind down with a short screen‑free ritual tonight.";
+      return "A steady bedtime routine helps cement this progress. Wind down with a short screen-free ritual tonight.";
     }
     if (name.includes("steps") || name.includes("movement") || name.includes("activity")) {
       return "Aim for a quick walk after lunch or a short standing break every hour to keep your activity momentum.";
     }
     if (name.includes("mindful") || name.includes("wellness") || name.includes("focus")) {
-      return "Take a moment to reflect on what helped you earn this badge, then set a small follow‑up goal to keep the rhythm going.";
+      return "Take a moment to reflect on what helped you earn this badge, then set a small follow-up goal to keep the rhythm going.";
     }
     return "Keep doing what earned this badge, and use it as motivation to add one more healthy habit today.";
   };
@@ -140,362 +134,329 @@ export default function DashboardPage() {
     };
   }, [trends]);
 
+  const formatDelta = (delta: number | undefined, fallback: string) =>
+    delta ? `${delta > 0 ? "+" : ""}${delta.toFixed(0)}% vs. start` : fallback;
+
   if (!token) return null;
   if (dashboardError)
     return (
-      <div className="mx-auto max-w-2xl rounded-3xl border border-red-200 bg-red-50 p-6 text-red-700">
-        {dashboardError}
+      <div className="mx-auto max-w-6xl py-2">
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-red-700">
+          {dashboardError}
+        </div>
       </div>
     );
   if (!data)
     return (
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-6xl py-2">
         <Panel>
           <LoadingSection lines={6} />
         </Panel>
       </div>
     );
 
+  const stats = [
+    { icon: Flame, label: "Current streak", value: data.streak?.current_streak_days ?? 0, unit: "days" },
+    { icon: Target, label: "Longest streak", value: data.streak?.longest_streak_days ?? 0, unit: "days" },
+    { icon: BadgeCheck, label: "Badges", value: data.badges.length, unit: "earned" },
+    { icon: Trophy, label: "Total points", value: data.total_points, unit: "pts" },
+  ];
+
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-4 py-6">
+    <div className="space-y-6">
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
 
-      {/* Stats strip – fewer cards, one fluid row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          {
-            icon: Flame,
-            label: "Current streak",
-            value: data.streak?.current_streak_days ?? 0,
-            unit: "days",
-            accent: "from-amber-400 to-orange-500",
-            bg: "bg-gradient-to-br from-amber-50 to-orange-50",
-          },
-          {
-            icon: Target,
-            label: "Longest streak",
-            value: data.streak?.longest_streak_days ?? 0,
-            unit: "days",
-            accent: "from-emerald-400 to-green-500",
-            bg: "bg-gradient-to-br from-emerald-50 to-green-50",
-          },
-          {
-            icon: BadgeCheck,
-            label: "Badges",
-            value: data.badges.length,
-            unit: "earned",
-            accent: "from-violet-400 to-fuchsia-500",
-            bg: "bg-gradient-to-br from-violet-50 to-fuchsia-50",
-          },
-          {
-            icon: Trophy,
-            label: "Total points",
-            value: data.total_points,
-            unit: "pts",
-            accent: "from-sky-400 to-cyan-500",
-            bg: "bg-gradient-to-br from-sky-50 to-cyan-50",
-          },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <div
-              key={item.label}
-              className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/70 p-4 backdrop-blur-sm transition-all hover:shadow-lg hover:-translate-y-0.5"
-            >
-              <div className={`absolute -right-4 -top-4 h-20 w-20 rounded-full bg-gradient-to-br ${item.accent} opacity-10 blur-2xl`} />
-              <div className="relative flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                    {item.label}
-                  </p>
-                  <p className="mt-2 text-3xl font-bold text-slate-900">
-                    {item.value}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-400">{item.unit}</p>
-                </div>
-                <div className={`rounded-xl bg-gradient-to-br ${item.accent} p-2 text-white shadow-sm`}>
-                  <Icon size={18} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--accent)]">Welcome back</p>
+          <h1 className="mt-2 text-3xl font-bold text-[var(--text)]">Your progress</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">Track your health goals and achievements</p>
+        </div>
+        <button
+          onClick={refreshDashboard}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-white px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:bg-[var(--bg-soft)] disabled:opacity-60"
+          aria-label="Refresh dashboard"
+        >
+          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+          Refresh
+        </button>
       </div>
 
-      {/* Goals & momentum – merged into one clean surface */}
-      <div className="rounded-[2.5rem] border border-white/50 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--accent)]">
-              Goal momentum
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-900">
-              {goalsSummary && goalsSummary.total > 0
-                ? `${goalsSummary.completed} of ${goalsSummary.total} goals done`
-                : "No goals yet"}
-            </h2>
-            <p className="mt-2 text-sm text-slate-500">
-              {goalsSummary && goalsSummary.total > 0
-                ? `${goalsSummary.active} active, keep going!`
-                : "Add one to start building momentum."}
-            </p>
+      {/* Error state */}
+      {dashboardError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {dashboardError}
+        </div>
+      )}
+
+      {/* Loading state */}
+      {!data && !dashboardError && (
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 rounded-xl border border-[var(--panel-border)] bg-white animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {data && (
+        <>
+          {/* Stats grid */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            {stats.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.label}
+                  className="rounded-lg border border-[var(--panel-border)] bg-white p-4 shadow-xs"
+                >
+                  <div className="flex items-center gap-2 text-[var(--muted)]">
+                    <Icon size={16} />
+                    <span className="text-xs font-medium uppercase tracking-wide">
+                      {item.label}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-[var(--text)]">
+                    {item.value}
+                    <span className="ml-1 text-xs font-normal text-[var(--muted)]">
+                      {item.unit}
+                    </span>
+                  </p>
+                </div>
+              );
+            })}
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 rounded-2xl bg-blue-50/80 px-4 py-3">
+
+          {/* Goal momentum */}
+          <Panel>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--accent)]">Goal momentum</p>
+                <h2 className="mt-2 text-lg font-bold text-[var(--text)]">
+                  {goalsSummary && goalsSummary.total > 0
+                    ? `${goalsSummary.completed} of ${goalsSummary.total} goals done`
+                    : "No goals yet"}
+                </h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  {goalsSummary && goalsSummary.total > 0
+                    ? `${goalsSummary.active} active — keep the momentum going.`
+                    : "Add one to start building your health journey."}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
               <GoalProgressRing
                 value={goalsCompletionPercent}
                 target={100}
-                size={68}
+                size={96}
                 strokeWidth={8}
                 color="blue"
               />
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-700">
-                  Progress
+                <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
+                  Completion rate
                 </p>
-                <p className="text-xl font-bold text-slate-900">
-                  {goalsCompletionPercent}%
+                <p className="mt-2 text-3xl font-bold text-[var(--text)]">{goalsCompletionPercent}%</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  {goalsSummary && goalsSummary.total > 0
+                    ? `${goalsCompletionPercent === 100 ? "All done! Excellent work." : "Keep making progress."}`
+                    : "Start with your first goal."}
                 </p>
               </div>
             </div>
-            <button
-              onClick={refreshDashboard}
-              className="rounded-full bg-[var(--bg-soft)] p-3 text-[var(--accent)] transition hover:bg-[var(--accent)]/10"
-              aria-label="Refresh dashboard"
-            >
-              <Sparkles size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
+          </Panel>
 
-      {/* Weekly trends – unified panel */}
-      <div className="overflow-hidden rounded-[2.5rem] border border-white/50 bg-white/80 shadow-sm backdrop-blur-sm">
-        <div className="p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--accent)]">
-                Weekly trend
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-900">
-                How your habits are moving
-              </h2>
-              <p className="mt-2 text-sm text-slate-500">
-                A quick look at hydration, movement, and recovery over the last seven days.
-              </p>
+          {/* Weekly trends */}
+          <Panel>
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--accent)]">Weekly trends</p>
+                <h2 className="mt-2 text-lg font-bold text-[var(--text)]">How your habits are moving</h2>
+              </div>
+              <span className="rounded-lg bg-[var(--accent)]/10 px-3 py-1 text-xs font-medium text-[var(--accent)]">
+                {trendsLoading ? "Loading…" : "Last 7 days"}
+              </span>
             </div>
-            <div className="rounded-full bg-[var(--accent)]/10 px-3 py-2 text-sm font-semibold text-[var(--accent)]">
-              {trendsLoading ? "Loading…" : "Last 7 days"}
-            </div>
-          </div>
 
-          {!trends ? (
-            <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-sm text-slate-500">
-              {trendsLoading ? "Preparing your trend snapshot…" : "Trend data is not available yet."}
-            </div>
-          ) : (
-            <div className="mt-6 space-y-6">
-              {/* Hydration bars */}
-              <div className="rounded-3xl bg-gradient-to-br from-cyan-50/60 to-sky-50/60 p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800">Hydration</p>
-                    <p className="text-xs text-slate-500">
-                      {trendSummary?.hydrationDelta
-                        ? `${trendSummary.hydrationDelta > 0 ? "+" : ""}${trendSummary.hydrationDelta.toFixed(0)}% vs. start`
-                        : "No recent data"}
+            {!trends ? (
+              <p className="text-sm text-[var(--muted)]">
+                {trendsLoading ? "Preparing your trend snapshot…" : "Trend data not available yet. Log some activities to see trends."}
+              </p>
+            ) : (
+              <div className="space-y-6">
+                {/* Hydration */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-[var(--text)]">Hydration</p>
+                    <p className="text-xs text-[var(--muted)]">
+                      {trends.hydration.at(-1)?.value ?? 0} ml ·{" "}
+                      {formatDelta(trendSummary?.hydrationDelta, "—")}
                     </p>
                   </div>
-                  <div className="rounded-full bg-cyan-100 px-3 py-1 text-sm font-semibold text-cyan-700">
-                    {trends.hydration.at(-1)?.value ?? 0} ml
+                  <div className="mt-3 grid h-20 grid-cols-7 gap-2">
+                    {trends.hydration.slice(-7).map((point, idx) => {
+                      const height = Math.max(8, Math.min(100, ((point.value ?? 0) / 2500) * 100));
+                      return (
+                        <div key={`${point.timestamp}-${idx}`} className="flex flex-col items-center justify-end gap-1">
+                          <div
+                            className="w-full rounded-sm bg-blue-500 transition-all"
+                            style={{ height: `${height}%`, minHeight: "4px" }}
+                            title={`${point.value} ml`}
+                          />
+                          <span className="text-[10px] font-medium text-[var(--muted)]">
+                            {new Date(point.timestamp).toLocaleDateString("en", { weekday: "short" })}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="grid grid-cols-7 gap-2 h-28">
-                  {trends.hydration.slice(-7).map((point, idx) => {
-                    const height = Math.max(15, Math.min(100, ((point.value ?? 0) / 2500) * 100));
-                    return (
-                      <div key={`${point.timestamp}-${idx}`} className="flex flex-col items-center justify-end">
-                        <div
-                          className="w-full max-w-[2rem] rounded-t-xl bg-gradient-to-t from-cyan-500 to-sky-400 transition-all duration-300"
-                          style={{ height: `${height}%` }}
-                        />
-                        <span className="mt-1 text-[10px] font-medium text-slate-400">
-                          {new Date(point.timestamp).toLocaleDateString("en", { weekday: "short" })}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
 
-              {/* Recovery & movement side by side */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl bg-gradient-to-br from-rose-50/60 to-pink-50/60 p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-rose-600">
-                    <HeartPulse size={16} /> Recovery
+                {/* Recovery & Movement */}
+                <div className="grid gap-6 border-t border-[var(--panel-border)] pt-6 sm:grid-cols-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <HeartPulse size={16} className="text-red-500" />
+                      <span className="text-sm font-bold text-[var(--text)]">Recovery</span>
+                    </div>
+                    <p className="mt-3 text-2xl font-bold text-[var(--text)]">
+                      {trends.vitals.heart_rate.at(-1)?.value ?? "—"}
+                      <span className="ml-1 text-xs font-normal text-[var(--muted)]">bpm</span>
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      {formatDelta(trendSummary?.heartRateDelta, "stable")}
+                    </p>
                   </div>
-                  <p className="mt-3 text-2xl font-bold text-slate-900">
-                    {trends.vitals.heart_rate.at(-1)?.value ?? "—"} bpm
-                  </p>
-                  <p className="mt-2 text-sm text-slate-500">
-                    {trendSummary?.heartRateDelta
-                      ? `${trendSummary.heartRateDelta > 0 ? "+" : ""}${trendSummary.heartRateDelta.toFixed(0)}% vs. start`
-                      : "Stable"}
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-gradient-to-br from-emerald-50/60 to-teal-50/60 p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600">
-                    <Waves size={16} /> Movement
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Waves size={16} className="text-blue-500" />
+                      <span className="text-sm font-bold text-[var(--text)]">Movement</span>
+                    </div>
+                    <p className="mt-3 text-2xl font-bold text-[var(--text)]">
+                      {trends.exercise.at(-1)?.duration_minutes ?? 0}
+                      <span className="ml-1 text-xs font-normal text-[var(--muted)]">min</span>
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      {formatDelta(trendSummary?.exerciseDelta, "no recent logs")}
+                    </p>
                   </div>
-                  <p className="mt-3 text-2xl font-bold text-slate-900">
-                    {trends.exercise.at(-1)?.duration_minutes ?? 0} min
-                  </p>
-                  <p className="mt-2 text-sm text-slate-500">
-                    {trendSummary?.exerciseDelta
-                      ? `${trendSummary.exerciseDelta > 0 ? "+" : ""}${trendSummary.exerciseDelta.toFixed(0)}% vs. start`
-                      : "No recent logs"}
-                  </p>
                 </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Badges – horizontal scroll, minimal */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold text-slate-900">Badges</h2>
-          {data.badges.length > 0 && (
-            <span className="text-sm font-medium text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1 rounded-full">
-              {data.badges.length} earned
-            </span>
-          )}
-        </div>
-        {data.badges.length === 0 ? (
-          <EmptyState title="No badges yet" description="Keep showing up for your habits and this space will fill up with wins." />
-        ) : (
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
-            {data.badges.map((badge) => (
-              <button
-                key={badge.id}
-                onClick={() => setSelectedBadge(badge)}
-                className="flex-shrink-0 w-48 rounded-3xl border border-white/60 bg-white/80 p-4 text-left shadow-sm backdrop-blur-sm transition hover:shadow-md hover:-translate-y-0.5"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="rounded-full bg-[var(--accent)]/10 px-3 py-1 text-xs font-semibold text-[var(--accent)]">
-                    Earned
-                  </span>
-                  <BadgeCheck size={16} className="text-[var(--accent)]" />
-                </div>
-                <p className="font-semibold text-slate-900">{badge.name}</p>
-                <p className="text-xs text-slate-500 mt-1 line-clamp-2">{badge.description}</p>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* AI guidance – airy list */}
-      <div>
-        <div className="flex items-center gap-3 mb-4">
-          <Bot size={20} className="text-[var(--accent)]" />
-          <h2 className="text-2xl font-semibold text-slate-900">Recent AI guidance</h2>
-        </div>
-        {data.recent_chat_logs.length === 0 ? (
-          <EmptyState title="No guidance yet" description="Start a conversation with your coach to collect a history of suggestions here." />
-        ) : (
-          <div className="space-y-3">
-            {data.recent_chat_logs.map((entry) => (
-              <div
-                key={entry.id}
-                className="rounded-2xl bg-white/70 border border-white/50 p-4 backdrop-blur-sm"
-              >
-                <p className="text-sm font-semibold text-slate-900">
-                  {entry.user_message}
-                </p>
-                <p className="mt-2 text-sm text-slate-600 whitespace-pre-line">
-                  {entry.assistant_response}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Badge detail modal – glassy overlay */}
-      {selectedBadge && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-[2.5rem] border border-white/50 bg-white/90 p-6 shadow-2xl backdrop-blur-md">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--accent)]">
-                  Badge details
-                </p>
-                <h3 className="mt-2 text-3xl font-bold text-slate-900">
-                  {selectedBadge.name}
-                </h3>
-              </div>
-              <button
-                onClick={() => setSelectedBadge(null)}
-                className="rounded-full bg-[var(--bg-soft)] p-2 text-slate-500 hover:bg-slate-100"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="mt-4 text-slate-600">
-              {selectedBadge.description ??
-                "This badge was awarded for your consistent progress and healthy habit achievements."}
-            </p>
-
-            {selectedBadgeTip && (
-              <div className="mt-6 rounded-2xl bg-gradient-to-br from-emerald-50 to-green-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-                  Achievement tip
-                </p>
-                <p className="mt-2 text-sm text-slate-800">{selectedBadgeTip}</p>
               </div>
             )}
+          </Panel>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Awarded on
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                  {new Date(selectedBadge.awarded_at ?? Date.now()).toLocaleDateString()}
-                </p>
+          {/* Badges */}
+          <Panel>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--accent)]">Achievements</p>
+                <h2 className="mt-2 text-lg font-bold text-[var(--text)]">Your badges</h2>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Next step
-                </p>
-                <p className="mt-2 text-sm text-slate-700">
-                  Keep building momentum by adding a goal or tracking one more healthy habit today.
-                </p>
+              {data.badges.length > 0 && (
+                <span className="text-xs font-medium text-[var(--muted)]">
+                  {data.badges.length} earned
+                </span>
+              )}
+            </div>
+            {data.badges.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">
+                Earn badges by staying consistent with your health habits. They'll appear here as you make progress.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {data.badges.map((badge) => (
+                  <button
+                    key={badge.id}
+                    onClick={() => setSelectedBadge(badge)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--accent)]/5 px-3 py-2 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent)]/40 hover:bg-[var(--accent)]/10"
+                  >
+                    <BadgeCheck size={14} className="text-[var(--accent)]" />
+                    {badge.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          {/* Recent guidance */}
+          <Panel>
+            <div className="mb-4 flex items-center gap-2">
+              <Bot size={16} className="text-[var(--accent)]" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--accent)]">AI Coach</p>
+                <h2 className="text-lg font-bold text-[var(--text)]">Recent guidance</h2>
               </div>
             </div>
+            {data.recent_chat_logs.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">
+                Start a conversation with your AI coach to get personalized health recommendations and support.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {data.recent_chat_logs.slice(0, 3).map((entry) => (
+                  <div key={entry.id} className="border-l-2 border-[var(--accent)] pl-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--accent)]">You asked</p>
+                    <p className="mt-1 text-sm text-[var(--text)]">{entry.user_message}</p>
+                    <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--accent)]">Coach said</p>
+                    <p className="mt-1 whitespace-pre-line text-sm text-[var(--muted)] line-clamp-3">
+                      {entry.assistant_response}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                onClick={() => setSelectedBadge(null)}
-                className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedBadge(null);
-                  router.push("/goals");
-                }}
-                className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-              >
-                View goals
-              </button>
+          {/* Badge modal */}
+          {selectedBadge && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-2xl border border-[var(--panel-border)] bg-white p-6 shadow-lg">
+                <div className="mb-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--accent)]">Achievement</p>
+                  <h3 className="mt-2 text-2xl font-bold text-[var(--text)]">{selectedBadge.name}</h3>
+                </div>
+
+                <p className="text-sm text-[var(--muted)]">
+                  {selectedBadge.description ??
+                    "Awarded for your consistent progress and healthy habit achievements."}
+                </p>
+
+                {selectedBadgeTip && (
+                  <p className="mt-4 border-l-2 border-[var(--accent)] pl-3 text-sm font-medium text-[var(--text)]">
+                    💡 {selectedBadgeTip}
+                  </p>
+                )}
+
+                <p className="mt-4 text-xs text-[var(--muted)]">
+                  Earned on{" "}
+                  {new Date(selectedBadge.awarded_at ?? Date.now()).toLocaleDateString(
+                    "en",
+                    { year: "numeric", month: "short", day: "numeric" }
+                  )}
+                </p>
+
+                <div className="mt-6 flex gap-3">
+                  <button
+                    onClick={() => setSelectedBadge(null)}
+                    className="flex-1 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent)]/90"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedBadge(null);
+                      router.push("/dashboard/goals");
+                    }}
+                    className="flex-1 rounded-lg border border-[var(--panel-border)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:bg-[var(--bg-soft)]"
+                  >
+                    View goals
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );

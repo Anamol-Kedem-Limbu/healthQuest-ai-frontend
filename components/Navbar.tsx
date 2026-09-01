@@ -147,50 +147,27 @@ export function Navbar({
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[var(--panel-border)] bg-white/80 backdrop-blur-lg shadow-sm">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 lg:px-10">
+    <header className="sticky top-0 z-50 w-full border-b border-[var(--panel-border)] bg-white backdrop-blur-sm shadow-xs">
+      <div className="mx-auto flex items-center justify-between gap-4 px-4 py-3 lg:px-6">
         {/* Left section */}
         <div className="flex items-center gap-3">
           <button
             onClick={onToggleSidebar}
             aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-            className="rounded-xl p-2 text-[var(--text)] transition hover:bg-[var(--bg-soft)] lg:hidden"
+            className="rounded-lg p-1.5 text-[var(--text)] transition hover:bg-[var(--bg-soft)] lg:hidden"
           >
-            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <span className="text-xs font-bold uppercase tracking-[0.28em] text-[var(--accent)]">
-              HealthQuest AI
-            </span>
-            <span className="hidden text-sm font-medium text-[var(--muted)] md:block">
-              Personal health, guided
+          <Link href="/dashboard" className="flex items-center gap-2.5">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--accent)] hidden sm:block">
+              HealthQuest
             </span>
           </Link>
         </div>
 
         {/* Right section */}
-        <div className="flex items-center gap-2">
-          {/* Desktop navigation */}
-          <nav className="hidden items-center gap-1 lg:flex">
-            {desktopLinks.map((link) => {
-              const active = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                    active
-                      ? "bg-[var(--accent)]/10 text-[var(--accent)] shadow-sm"
-                      : "text-[var(--text)] hover:bg-[var(--bg-soft)]"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-
+        <div className="flex items-center gap-1">
           {/* Notification bell */}
           <div className="relative">
             <button
@@ -198,161 +175,160 @@ export function Navbar({
                 setProfileOpen(false);
                 setNotificationsOpen((v) => !v);
               }}
-              className="relative rounded-xl p-2 text-[var(--text)] transition hover:bg-[var(--bg-soft)]"
+              className="relative rounded-lg p-1.5 text-[var(--text)] transition hover:bg-[var(--bg-soft)]"
               aria-label="Show notifications"
             >
-              <Bell size={18} />
+              <Bell size={20} />
               {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white shadow-sm">
-                  {unreadCount}
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white shadow-sm">
+                  {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </button>
 
             {notificationsOpen && (
-              <div className="absolute right-0 z-50 mt-3 w-[22rem] rounded-[2rem] border border-[var(--panel-border)] bg-white/95 p-5 shadow-2xl backdrop-blur-md">
-                <div className="mb-4 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-base font-semibold text-[var(--text)]">
+              <div className="absolute right-0 z-50 mt-2 w-80 max-w-[90vw] rounded-2xl border border-[var(--panel-border)] bg-white shadow-lg backdrop-blur-sm">
+                <div className="border-b border-[var(--panel-border)] px-4 py-3.5">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-bold text-[var(--text)]">
                       Notifications
                     </p>
-                    <p className="text-xs text-[var(--muted)]">
-                      Showing latest {displayedNotifications.length} of {notifications.length}
-                    </p>
+                    <span className="text-xs text-[var(--muted)]">
+                      {unreadCount > 0 && `${unreadCount} new`}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex gap-2">
                     <button
                       onClick={handleMarkAllRead}
-                      className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--bg-soft)]"
+                      className="flex-1 rounded-lg border border-[var(--panel-border)] px-2 py-1.5 text-xs font-medium text-[var(--text)] transition hover:bg-[var(--bg-soft)]"
                     >
                       Mark all read
                     </button>
                     <Link
-                      href="/notifications"
-                      className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--accent)]/90"
+                      href="/dashboard/notifications"
+                      className="flex-1 rounded-lg bg-[var(--accent)] px-2 py-1.5 text-center text-xs font-medium text-white transition hover:bg-[var(--accent)]/90"
                     >
                       See all
                     </Link>
                   </div>
                 </div>
 
-                <div className="max-h-80 space-y-2 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[var(--accent)]/20 scrollbar-track-transparent">
+                <div className="max-h-96 overflow-y-auto">
                   {displayedNotifications.length === 0 ? (
-                    <div className="rounded-2xl bg-[var(--bg-soft)] p-4 text-sm text-[var(--muted)]">
-                      No notifications yet. Keep using the app to earn updates and reminders.
+                    <div className="p-4 text-center text-sm text-[var(--muted)]">
+                      No notifications yet
                     </div>
                   ) : (
-                    displayedNotifications.map((item) => {
-                      const Icon = getNotificationIcon(item.title);
-                      const handleActOnNotification = async () => {
-                        if (!token) return;
-                        try {
-                          await markNotificationRead(token, item.id);
-                          setNotifications((prev) =>
-                            prev.map((n) =>
-                              n.id === item.id ? { ...n, read: true } : n
-                            )
-                          );
-                        } catch {
-                          // ignore
-                        }
-                        const normalized = `${item.title} ${item.message}`.toLowerCase();
-                        if (
-                          normalized.includes("vitals") ||
-                          normalized.includes("no vitals") ||
-                          normalized.includes("log your vitals")
-                        ) {
-                          router.push("/dashboard/health");
-                          return;
-                        }
-                        if (
-                          normalized.includes("appointment") ||
-                          normalized.includes("attend") ||
-                          normalized.includes("reminder")
-                        ) {
-                          router.push("/dashboard/health");
-                          return;
-                        }
-                      };
+                    <div className="divide-y divide-[var(--panel-border)]">
+                      {displayedNotifications.map((item) => {
+                        const Icon = getNotificationIcon(item.title);
+                        const handleActOnNotification = async () => {
+                          if (!token) return;
+                          try {
+                            await markNotificationRead(token, item.id);
+                            setNotifications((prev) =>
+                              prev.map((n) =>
+                                n.id === item.id ? { ...n, read: true } : n
+                              )
+                            );
+                          } catch {
+                            // ignore
+                          }
+                          const normalized = `${item.title} ${item.message}`.toLowerCase();
+                          if (
+                            normalized.includes("vitals") ||
+                            normalized.includes("no vitals") ||
+                            normalized.includes("log your vitals")
+                          ) {
+                            router.push("/dashboard/health");
+                            return;
+                          }
+                          if (
+                            normalized.includes("appointment") ||
+                            normalized.includes("attend") ||
+                            normalized.includes("reminder")
+                          ) {
+                            router.push("/dashboard/health");
+                            return;
+                          }
+                        };
 
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={handleActOnNotification}
-                          className={`w-full rounded-2xl border p-3 text-left transition ${
-                            item.read
-                              ? "border-[var(--panel-border)] bg-[var(--bg)] hover:bg-[var(--bg-soft)]"
-                              : "border-[var(--accent)]/20 bg-[var(--accent)]/5 hover:bg-[var(--accent)]/10"
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--bg-soft)] text-[var(--accent)]">
-                              <Icon size={16} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="truncate text-sm font-semibold text-[var(--text)]">
-                                  {item.title}
-                                </p>
-                                {!item.read && (
-                                  <span className="rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[11px] font-semibold text-[var(--accent)]">
-                                    New
-                                  </span>
-                                )}
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={handleActOnNotification}
+                            className={`w-full px-4 py-3 text-left transition ${
+                              item.read
+                                ? "bg-white hover:bg-[var(--bg-soft)]"
+                                : "bg-[var(--accent)]/5 hover:bg-[var(--accent)]/10"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] flex-shrink-0">
+                                <Icon size={16} />
                               </div>
-                              <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">
-                                {item.message ?? "No details available."}
-                              </p>
-                              <p className="mt-2 text-[10px] text-[var(--muted)]">
-                                {item.created_at
-                                  ? new Date(item.created_at).toLocaleString()
-                                  : "Unknown date"}
-                              </p>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-sm font-medium text-[var(--text)]">
+                                    {item.title}
+                                  </p>
+                                  {!item.read && (
+                                    <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-white flex-shrink-0">
+                                      New
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="mt-1 text-xs text-[var(--muted)] line-clamp-2">
+                                  {item.message ?? "No details available."}
+                                </p>
+                                <p className="mt-1.5 text-[10px] text-[var(--muted)]">
+                                  {item.created_at
+                                    ? new Date(item.created_at).toLocaleString()
+                                    : "Unknown date"}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </button>
-                      );
-                    })
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Profile avatar (desktop) */}
-          <div className="relative hidden lg:block" ref={profileMenuRef}>
+          {/* Profile avatar */}
+          <div className="relative hidden sm:block" ref={profileMenuRef}>
             <button
               onClick={() => {
                 setNotificationsOpen(false);
                 setProfileOpen((v) => !v);
               }}
-              className="flex items-center gap-3 rounded-full p-1 pr-3 text-left transition hover:bg-[var(--bg-soft)]"
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-[var(--bg-soft)]"
               aria-label="Open profile menu"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[var(--accent)] to-purple-500 text-sm font-bold text-white shadow-md">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--accent)] to-teal-600 text-xs font-bold text-white shadow-sm">
                 {avatarInitial}
               </span>
-              <div className="hidden text-sm leading-tight xl:block">
-                <div className="font-semibold text-[var(--text)]">
+              <div className="hidden text-xs leading-tight lg:block">
+                <div className="font-medium text-[var(--text)] truncate max-w-[120px]">
                   {displayName}
-                </div>
-                <div className="text-[11px] text-[var(--muted)]">
-                  {profileSubtitle}
                 </div>
               </div>
             </button>
 
             {profileOpen && (
-              <div className="absolute right-0 z-50 mt-3 w-72 overflow-hidden rounded-[2rem] border border-[var(--panel-border)] bg-white/95 p-3 shadow-2xl backdrop-blur-md">
-                <div className="rounded-2xl bg-[var(--bg-soft)] p-4">
-                  <p className="text-sm font-semibold text-[var(--text)]">
+              <div className="absolute right-0 z-50 mt-2 w-80 max-w-[90vw] overflow-hidden rounded-2xl border border-[var(--panel-border)] bg-white shadow-lg backdrop-blur-sm">
+                <div className="border-b border-[var(--panel-border)] px-4 py-3.5">
+                  <p className="text-sm font-bold text-[var(--text)]">
                     {displayName}
                   </p>
                   <p className="mt-1 text-xs text-[var(--muted)]">
                     {profileSubtitle}
                   </p>
                 </div>
-                <div className="mt-2 space-y-1">
+                <div className="space-y-1 p-2">
                   <button
                     type="button"
                     onClick={async () => {
@@ -370,7 +346,7 @@ export function Navbar({
                       }
                     }}
                     disabled={analyzing}
-                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-[var(--text)] transition hover:bg-[var(--bg-soft)] disabled:opacity-60"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-[var(--text)] transition hover:bg-[var(--bg-soft)] disabled:opacity-60"
                   >
                     <FileSearch size={16} className="text-[var(--accent)]" />
                     {analyzing ? "Analyzing…" : "Analyze my report"}
@@ -381,7 +357,7 @@ export function Navbar({
                       setProfileOpen(false);
                       logout();
                     }}
-                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"
                   >
                     <LogOut size={16} />
                     Logout

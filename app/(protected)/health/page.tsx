@@ -38,7 +38,7 @@ import type {
   VitalsEntry,
 } from "@/lib/types";
 import { useToasts, ToastContainer } from "@/components/Toast";
-import { GoalProgressRing } from "@/components/ui";
+import { GoalProgressRing, PageHeader, Panel, ui } from "@/components/ui";
 
 export default function HealthPage() {
   const router = useRouter();
@@ -185,7 +185,6 @@ export default function HealthPage() {
     return missing;
   }, [profile, latestVitals, symptoms, medications]);
 
-  const reportIsComplete = reportMissingSections.length === 0;
   const reportReadiness = useMemo(() => {
     const total = 4;
     const completed = total - reportMissingSections.length;
@@ -317,13 +316,11 @@ export default function HealthPage() {
     const analyzeRequested = searchParams.get("analyze") === "1";
     if (!token || loading || handledAnalyzeRequest.current || !analyzeRequested) return;
     handledAnalyzeRequest.current = true;
-    if (reportIsComplete) {
-      void runReportAnalysis();
-    } else {
-      setReportWizardStep(0);
-      setReportModalOpen(true);
-    }
-  }, [token, loading, reportIsComplete, searchParams]);
+    // Never auto-generate. Only open the review modal; the user must click
+    // "Generate report" on the final step to actually run the analysis.
+    setReportWizardStep(0);
+    setReportModalOpen(true);
+  }, [token, loading, searchParams]);
 
   const refreshHealthData = async () => {
     if (!token) return;
@@ -492,111 +489,97 @@ export default function HealthPage() {
 
   const openReportAnalyzer = () => {
     if (reportAnalyzing || reportAnalysisLockRef.current || Boolean(reportBusyMessage)) return;
-    if (reportIsComplete) {
-      void runReportAnalysis();
-      return;
-    }
+    // Always show the review modal first. The report is only generated when the
+    // user explicitly clicks "Generate report" on the final step.
     setReportWizardStep(0);
     setReportModalOpen(true);
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-4 py-6">
+    <div className="space-y-6">
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
 
-      {/* Page header with actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--accent)]">
-            Health Hub
-          </p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">
-            Your wellbeing at a glance
-          </h1>
-          <p className="mt-2 text-slate-500">
-            Profile, vitals, symptoms, medications, and appointments in one place.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={openReportAnalyzer}
-            disabled={
-              reportAnalyzing || reportAnalysisLockRef.current || Boolean(reportBusyMessage)
-            }
-            className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {reportAnalyzing
-              ? "Generating…"
-              : reportBusyMessage
-              ? "Report in progress"
-              : "Analyze my report"}
-          </button>
-          <Link
-            href="/dashboard/settings"
-            className="rounded-full bg-gray-700 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-          >
-            Open settings
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        kicker="Health"
+        title="Your wellbeing at a glance"
+        description="Profile, vitals, symptoms, medications, and appointments in one place."
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={openReportAnalyzer}
+              disabled={
+                reportAnalyzing || reportAnalysisLockRef.current || Boolean(reportBusyMessage)
+              }
+              className={ui.btnPrimary}
+            >
+              {reportAnalyzing
+                ? "Generating…"
+                : reportBusyMessage
+                ? "Report in progress"
+                : "Analyze my report"}
+            </button>
+            <Link href="/dashboard/settings" className={ui.btnSecondary}>
+              Open settings
+            </Link>
+          </>
+        }
+      />
 
       {/* Report readiness modal – guided review */}
       {reportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            onClick={closeReportModal}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
-          <div className="relative z-10 w-full max-w-2xl rounded-[2.5rem] border border-white/50 bg-white/95 p-6 shadow-2xl backdrop-blur-md">
+          <div onClick={closeReportModal} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative z-10 w-full max-w-2xl rounded-2xl border border-[var(--panel-border)] bg-white p-6 shadow-lg">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--accent)]">
-                  Prepare your report
-                </p>
-                <h3 className="mt-2 text-2xl font-bold text-slate-900">
+                <p className={ui.kicker}>Prepare your report</p>
+                <h3 className="mt-2 text-xl font-bold text-[var(--text)]">
                   Review the details before generating your AI summary
                 </h3>
-                <p className="mt-2 text-sm text-slate-500">
-                  We will use your available health data to create a polished report. You can review each section or skip it and continue with what is already here.
+                <p className="mt-2 text-sm text-[var(--muted)]">
+                  We will use your available health data to create a polished report. You can review
+                  each section or skip it and continue with what is already here.
                 </p>
               </div>
               <button
                 onClick={closeReportModal}
-                className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200"
+                className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--bg-soft)] hover:text-[var(--text)]"
+                aria-label="Close"
               >
                 ✕
               </button>
             </div>
 
-            <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+            <div className="mt-5 rounded-xl border border-[var(--panel-border)] bg-[var(--bg-soft)] p-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-slate-800">
-                  Step {Math.min(reportWizardStep + 1, reportWizardSteps.length)} of {reportWizardSteps.length}
+                <p className="text-sm font-semibold text-[var(--text)]">
+                  Step {Math.min(reportWizardStep + 1, reportWizardSteps.length)} of{" "}
+                  {reportWizardSteps.length}
                 </p>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500 shadow-sm">
-                  {reportWizardSteps[reportWizardStep]?.status}
-                </span>
+                <span className={ui.chip}>{reportWizardSteps[reportWizardStep]?.status}</span>
               </div>
-              <div className="mt-3 h-2 rounded-full bg-slate-200">
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--panel-border)]">
                 <div
                   className="h-2 rounded-full bg-[var(--accent)] transition-all"
-                  style={{ width: `${Math.round(((reportWizardStep + 1) / reportWizardSteps.length) * 100)}%` }}
+                  style={{
+                    width: `${Math.round(((reportWizardStep + 1) / reportWizardSteps.length) * 100)}%`,
+                  }}
                 />
               </div>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-sm font-semibold text-slate-800">
+            <div className="mt-4 rounded-xl border border-[var(--panel-border)] bg-white p-4">
+              <p className="text-sm font-semibold text-[var(--text)]">
                 {reportWizardSteps[reportWizardStep]?.title}
               </p>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-[var(--muted)]">
                 {reportWizardSteps[reportWizardStep]?.description}
               </p>
               <ul className="mt-4 space-y-2">
                 {reportWizardSteps[reportWizardStep]?.details.map((detail) => (
-                  <li key={detail} className="flex items-start gap-2 text-sm text-slate-600">
-                    <span className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-[var(--accent)]" />
+                  <li key={detail} className="flex items-start gap-2 text-sm text-[var(--muted)]">
+                    <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--accent)]" />
                     <span>{detail}</span>
                   </li>
                 ))}
@@ -608,16 +591,12 @@ export default function HealthPage() {
                 {reportWizardStep > 0 ? (
                   <button
                     onClick={() => setReportWizardStep((currentStep) => Math.max(0, currentStep - 1))}
-                    className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    className={ui.btnSecondary}
                   >
                     Back
                   </button>
                 ) : null}
-                <Link
-                  href="/dashboard/settings"
-                  onClick={closeReportModal}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
+                <Link href="/dashboard/settings" onClick={closeReportModal} className={ui.btnSecondary}>
                   Update data
                 </Link>
               </div>
@@ -626,16 +605,20 @@ export default function HealthPage() {
                 <button
                   onClick={handleReportWizardSkip}
                   disabled={reportAnalyzing}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                  className={ui.btnSecondary}
                 >
                   {reportWizardStep === reportWizardSteps.length - 1 ? "Skip and generate" : "Skip"}
                 </button>
                 <button
                   onClick={handleReportWizardAdvance}
                   disabled={reportAnalyzing}
-                  className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                  className={ui.btnPrimary}
                 >
-                  {reportAnalyzing ? "Analyzing…" : reportWizardStep === reportWizardSteps.length - 1 ? "Generate report" : "Next"}
+                  {reportAnalyzing
+                    ? "Analyzing…"
+                    : reportWizardStep === reportWizardSteps.length - 1
+                    ? "Generate report"
+                    : "Next"}
                 </button>
               </div>
             </div>
@@ -644,11 +627,13 @@ export default function HealthPage() {
       )}
 
       {healthError && (
-        <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-600">{healthError}</div>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {healthError}
+        </div>
       )}
 
       {reportBusyMessage && (
-        <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-700">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           {reportBusyMessage}
         </div>
       )}
@@ -656,80 +641,67 @@ export default function HealthPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 animate-pulse rounded-2xl bg-slate-100" />
+            <div
+              key={i}
+              className="h-32 animate-pulse rounded-xl border border-[var(--panel-border)] bg-[var(--bg-soft)]"
+            />
           ))}
         </div>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2">
           {/* Left column: Profile, Vitals, Analysis */}
-          <div className="space-y-8">
-            {/* Profile & BMI – unified glass surface */}
-            <div className="rounded-[2rem] border border-white/50 bg-white/70 p-6 backdrop-blur-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-lg font-semibold text-slate-800">
-                  <Activity size={18} className="text-blue-500" />
-                  Profile
+          <div className="space-y-6">
+            {/* Profile & BMI */}
+            <Panel>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className={ui.iconBadge}>
+                    <Activity size={16} />
+                  </span>
+                  <h2 className={ui.cardTitle}>Profile</h2>
                 </div>
-                <div className="flex items-center gap-3 rounded-2xl bg-blue-50/80 px-3 py-1.5">
+                <div className="flex items-center gap-2 rounded-full border border-[var(--panel-border)] bg-[var(--bg-soft)] px-2.5 py-1">
                   <GoalProgressRing
                     value={reportReadiness}
                     target={100}
-                    size={48}
+                    size={40}
                     strokeWidth={6}
                     color="blue"
                   />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">
+                  <span className="text-xs font-semibold text-[var(--muted)]">
                     {reportReadiness}%
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 {[
-                  {
-                    label: "Height",
-                    value: profile?.height_cm ? `${profile.height_cm} cm` : "—",
-                    bg: "bg-blue-50",
-                  },
-                  {
-                    label: "Weight",
-                    value: profile?.weight_kg ? `${profile.weight_kg} kg` : "—",
-                    bg: "bg-purple-50",
-                  },
-                  {
-                    label: "Age",
-                    value: profile?.age ?? "—",
-                    bg: "bg-emerald-50",
-                  },
-                  {
-                    label: "BMI",
-                    value: bmi ?? "—",
-                    bg: "bg-amber-50",
-                  },
+                  { label: "Height", value: profile?.height_cm ? `${profile.height_cm} cm` : "—" },
+                  { label: "Weight", value: profile?.weight_kg ? `${profile.weight_kg} kg` : "—" },
+                  { label: "Age", value: profile?.age ?? "—" },
+                  { label: "BMI", value: bmi ?? "—" },
                 ].map((item) => (
-                  <div
-                    key={item.label}
-                    className={`rounded-xl ${item.bg} p-3 text-center`}
-                  >
-                    <p className="text-xs font-medium text-slate-500">{item.label}</p>
-                    <p className="mt-1 text-xl font-bold text-slate-900">{item.value}</p>
+                  <div key={item.label} className={`${ui.subtle} p-3`}>
+                    <p className={ui.label}>{item.label}</p>
+                    <p className="mt-1 text-lg font-bold text-[var(--text)]">{item.value}</p>
                   </div>
                 ))}
               </div>
-            </div>
+            </Panel>
 
-            {/* Vitals – airy display */}
-            <div className="rounded-[2rem] border border-white/50 bg-white/70 p-6 backdrop-blur-sm">
-              <div className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-800">
-                <HeartPulse size={18} className="text-rose-500" />
-                Latest vitals
+            {/* Latest vitals */}
+            <Panel>
+              <div className="mb-4 flex items-center gap-2.5">
+                <span className={ui.iconBadge}>
+                  <HeartPulse size={16} />
+                </span>
+                <h2 className={ui.cardTitle}>Latest vitals</h2>
               </div>
               {latestVitals ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   {[
                     {
                       label: "Heart rate",
                       value: latestVitals.heart_rate ? `${latestVitals.heart_rate} bpm` : "—",
-                      bg: "bg-cyan-50",
                     },
                     {
                       label: "Blood pressure",
@@ -737,48 +709,40 @@ export default function HealthPage() {
                         latestVitals.systolic && latestVitals.diastolic
                           ? `${latestVitals.systolic}/${latestVitals.diastolic}`
                           : "—",
-                      bg: "bg-indigo-50",
                     },
                     {
                       label: "Temperature",
-                      value: latestVitals.temperature_c
-                        ? `${latestVitals.temperature_c} °C`
-                        : "—",
-                      bg: "bg-orange-50",
+                      value: latestVitals.temperature_c ? `${latestVitals.temperature_c} °C` : "—",
                     },
                     {
                       label: "SpO₂",
                       value: latestVitals.spo2 ? `${latestVitals.spo2}%` : "—",
-                      bg: "bg-emerald-50",
                     },
                   ].map((item) => (
-                    <div
-                      key={item.label}
-                      className={`rounded-xl ${item.bg} p-3 text-center`}
-                    >
-                      <p className="text-xs font-medium text-slate-500">{item.label}</p>
-                      <p className="mt-1 text-xl font-bold text-slate-900">
-                        {item.value}
-                      </p>
+                    <div key={item.label} className={`${ui.subtle} p-3`}>
+                      <p className={ui.label}>{item.label}</p>
+                      <p className="mt-1 text-lg font-bold text-[var(--text)]">{item.value}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+                <div className={`${ui.subtle} p-4 text-center text-sm text-[var(--muted)]`}>
                   No vitals logged yet.
                 </div>
               )}
-            </div>
+            </Panel>
 
             {/* Vitals input + analysis */}
-            <div className="rounded-[2rem] border border-white/50 bg-white/70 p-6 backdrop-blur-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-lg font-semibold text-slate-800">
-                  <Stethoscope size={18} className="text-violet-500" />
-                  Health analysis
+            <Panel>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className={ui.iconBadge}>
+                    <Stethoscope size={16} />
+                  </span>
+                  <h2 className={ui.cardTitle}>Health analysis</h2>
                 </div>
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${analysisTone.badge}`}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${analysisTone.badge}`}
                 >
                   {analysisTone.icon}
                   {analysis?.severity ?? "Awaiting data"}
@@ -787,195 +751,185 @@ export default function HealthPage() {
 
               <form className="grid grid-cols-2 gap-3" onSubmit={handleSubmitVitals}>
                 <label className="space-y-1">
-                  <span className="text-xs font-medium text-slate-500">Heart rate</span>
+                  <span className={ui.label}>Heart rate</span>
                   <input
                     type="number"
                     value={heartRateInput}
                     onChange={(e) => setHeartRateInput(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    className={ui.input}
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-xs font-medium text-slate-500">Systolic</span>
+                  <span className={ui.label}>Systolic</span>
                   <input
                     type="number"
                     value={systolicInput}
                     onChange={(e) => setSystolicInput(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    className={ui.input}
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-xs font-medium text-slate-500">Diastolic</span>
+                  <span className={ui.label}>Diastolic</span>
                   <input
                     type="number"
                     value={diastolicInput}
                     onChange={(e) => setDiastolicInput(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    className={ui.input}
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-xs font-medium text-slate-500">Temp (°C)</span>
+                  <span className={ui.label}>Temp (°C)</span>
                   <input
                     type="number"
                     step="0.1"
                     value={temperatureInput}
                     onChange={(e) => setTemperatureInput(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    className={ui.input}
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-xs font-medium text-slate-500">SpO₂ (%)</span>
+                  <span className={ui.label}>SpO₂ (%)</span>
                   <input
                     type="number"
                     step="0.1"
                     value={spo2Input}
                     onChange={(e) => setSpo2Input(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    className={ui.input}
                   />
                 </label>
                 <button
                   type="submit"
                   disabled={submittingVitals}
-                  className="col-span-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                  className={`col-span-2 ${ui.btnPrimary}`}
                 >
                   {submittingVitals ? "Saving…" : "Save and analyze"}
                 </button>
               </form>
 
               {vitalsMessage && (
-                <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                <p className={`mt-4 ${ui.subtle} p-3 text-sm text-[var(--muted)]`}>
                   {vitalsMessage}
                 </p>
               )}
 
               {analysis ? (
-                <div className={`mt-5 rounded-2xl border p-4 ${analysisTone.card}`}>
+                <div className={`mt-5 rounded-xl border p-4 ${analysisTone.card}`}>
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">Summary</p>
-                      <p className="mt-1 text-sm text-slate-600">{analysis.summary}</p>
+                      <p className="text-sm font-semibold text-[var(--text)]">Summary</p>
+                      <p className="mt-1 text-sm text-[var(--muted)]">{analysis.summary}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">
-                        Probable condition
-                      </p>
-                      <p className="mt-1 text-sm text-slate-600">
+                      <p className="text-sm font-semibold text-[var(--text)]">Probable condition</p>
+                      <p className="mt-1 text-sm text-[var(--muted)]">
                         {analysis.probable_condition ?? "No clear pattern detected."}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">
-                        Diet suggestions
-                      </p>
+                      <p className="text-sm font-semibold text-[var(--text)]">Diet suggestions</p>
                       {analysis.diet_suggestions?.length ? (
-                        <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-slate-600">
+                        <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-[var(--muted)]">
                           {analysis.diet_suggestions.map((s) => (
                             <li key={s}>{s}</li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="mt-1 text-sm text-slate-500">
-                          No diet suggestions yet.
-                        </p>
+                        <p className="mt-1 text-sm text-[var(--muted)]">No diet suggestions yet.</p>
                       )}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="mt-5 rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+                <div className={`mt-5 ${ui.subtle} p-4 text-center text-sm text-[var(--muted)]`}>
                   Awaiting analysis — log vitals to receive insight.
                 </div>
               )}
-            </div>
+            </Panel>
           </div>
 
           {/* Right column: Symptoms, Medications, Appointments */}
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Symptoms */}
-            <div className="rounded-[2rem] border border-white/50 bg-white/70 p-6 backdrop-blur-sm">
-              <div className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-800">
-                <Thermometer size={18} className="text-amber-500" />
-                Symptoms
+            <Panel>
+              <div className="mb-4 flex items-center gap-2.5">
+                <span className={ui.iconBadge}>
+                  <Thermometer size={16} />
+                </span>
+                <h2 className={ui.cardTitle}>Symptoms</h2>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {symptoms.length > 0 ? (
                   symptoms.map((symptom) => (
                     <div
                       key={symptom.id}
-                      className="flex items-start justify-between rounded-xl bg-amber-50/70 p-3"
+                      className={`flex items-start justify-between gap-3 ${ui.subtle} p-3`}
                     >
-                      <div>
-                        <p className="font-semibold text-slate-800">{symptom.name}</p>
-                        <p className="mt-1 text-xs text-slate-500">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[var(--text)]">{symptom.name}</p>
+                        <p className="mt-0.5 text-xs text-[var(--muted)]">
                           {symptom.notes ?? "No notes"}
                         </p>
                       </div>
-                      <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                      <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
                         Severity {symptom.severity ?? "—"}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+                  <div className={`${ui.subtle} p-4 text-center text-sm text-[var(--muted)]`}>
                     No symptoms logged yet.
                   </div>
                 )}
               </div>
-            </div>
+            </Panel>
 
             {/* Medications */}
-            <div className="rounded-[2rem] border border-white/50 bg-white/70 p-6 backdrop-blur-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-lg font-semibold text-slate-800">
-                  <Pill size={18} className="text-violet-500" />
-                  Medications
+            <Panel>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className={ui.iconBadge}>
+                    <Pill size={16} />
+                  </span>
+                  <h2 className={ui.cardTitle}>Medications</h2>
                 </div>
-                <div className="flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1.5">
+                <div className="flex items-center gap-2 rounded-full border border-[var(--panel-border)] bg-[var(--bg-soft)] px-2.5 py-1">
                   <GoalProgressRing
-                    value={
-                      medications.length > 0
-                        ? takenMedications.size > 0
-                          ? 100
-                          : 0
-                        : 0
-                    }
+                    value={medications.length > 0 ? (takenMedications.size > 0 ? 100 : 0) : 0}
                     target={100}
-                    size={40}
+                    size={36}
                     strokeWidth={6}
-                    color="violet"
+                    color="blue"
                   />
-                  <span className="text-xs font-semibold text-violet-700">
+                  <span className="text-xs font-semibold text-[var(--muted)]">
                     {takenMedications.size}/{medications.length}
                   </span>
                 </div>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {medications.length > 0 ? (
                   medications.map((med) => (
                     <div
                       key={med.id}
-                      className="flex items-center justify-between rounded-xl bg-violet-50/70 p-3"
+                      className={`flex items-center justify-between gap-3 ${ui.subtle} p-3`}
                     >
-                      <div>
-                        <p className="font-semibold text-slate-800">{med.name}</p>
-                        <p className="text-xs text-slate-500">
-                          {med.dosage ?? "No dosage"}
-                        </p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[var(--text)]">{med.name}</p>
+                        <p className="text-xs text-[var(--muted)]">{med.dosage ?? "No dosage"}</p>
                         {med.next_due && (
-                          <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-violet-600">
+                          <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
                             Next: {new Date(med.next_due).toLocaleString()}
                           </p>
                         )}
                       </div>
                       {takenMedications.has(med.id) ? (
-                        <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-600">
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                           Taken
                         </span>
                       ) : (
                         <button
                           onClick={() => handleTakeMedication(med.id)}
                           disabled={actionLoading === `med-${med.id}`}
-                          className="rounded-full bg-violet-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-violet-700 disabled:opacity-60"
+                          className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-95 disabled:opacity-60"
                         >
                           {actionLoading === `med-${med.id}` ? "…" : "Mark taken"}
                         </button>
@@ -983,66 +937,66 @@ export default function HealthPage() {
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+                  <div className={`${ui.subtle} p-4 text-center text-sm text-[var(--muted)]`}>
                     No medication reminders.
                   </div>
                 )}
               </div>
-            </div>
+            </Panel>
 
             {/* Appointments */}
-            <div className="rounded-[2rem] border border-white/50 bg-white/70 p-6 backdrop-blur-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-lg font-semibold text-slate-800">
-                  <CalendarDays size={18} className="text-sky-500" />
-                  Appointments
+            <Panel>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className={ui.iconBadge}>
+                    <CalendarDays size={16} />
+                  </span>
+                  <h2 className={ui.cardTitle}>Appointments</h2>
                 </div>
-                <div className="flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1.5">
+                <div className="flex items-center gap-2 rounded-full border border-[var(--panel-border)] bg-[var(--bg-soft)] px-2.5 py-1">
                   <GoalProgressRing
                     value={
                       appointments.length > 0
-                        ? Math.round(
-                            (attendedAppointments.size / appointments.length) * 100
-                          )
+                        ? Math.round((attendedAppointments.size / appointments.length) * 100)
                         : 0
                     }
                     target={100}
-                    size={40}
+                    size={36}
                     strokeWidth={6}
                     color="blue"
                   />
-                  <span className="text-xs font-semibold text-sky-700">
+                  <span className="text-xs font-semibold text-[var(--muted)]">
                     {attendedAppointments.size}/{appointments.length}
                   </span>
                 </div>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {appointments.length > 0 ? (
                   appointments.map((appt) => (
                     <div
                       key={appt.id}
-                      className="flex items-center justify-between rounded-xl bg-sky-50/70 p-3"
+                      className={`flex items-center justify-between gap-3 ${ui.subtle} p-3`}
                     >
-                      <div>
-                        <p className="font-semibold text-slate-800">{appt.title}</p>
-                        <p className="text-xs text-slate-500">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[var(--text)]">{appt.title}</p>
+                        <p className="text-xs text-[var(--muted)]">
                           {new Date(appt.scheduled_for).toLocaleString()}
                         </p>
                         {appt.notified && (
-                          <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-sky-600">
+                          <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
                             Reminder sent
                           </p>
                         )}
                       </div>
                       {attendedAppointments.has(appt.id) ? (
-                        <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-600">
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                           Attended
                         </span>
                       ) : (
                         <button
                           onClick={() => handleAttendAppointment(appt.id)}
                           disabled={actionLoading === `appt-${appt.id}`}
-                          className="rounded-full bg-sky-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60"
+                          className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-95 disabled:opacity-60"
                         >
                           {actionLoading === `appt-${appt.id}` ? "…" : "Mark attended"}
                         </button>
@@ -1050,12 +1004,12 @@ export default function HealthPage() {
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+                  <div className={`${ui.subtle} p-4 text-center text-sm text-[var(--muted)]`}>
                     No appointments planned.
                   </div>
                 )}
               </div>
-            </div>
+            </Panel>
           </div>
         </div>
       )}

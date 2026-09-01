@@ -7,29 +7,13 @@ import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import Spinner from "@/components/spinner";
-import { ArrowLeft, Eye, EyeOff, HeartPulse, MessageCircle, Trophy, ShieldCheck, Zap, Users } from "lucide-react";
-
-const advantages = [
-  {
-    title: "Smart wellness tracking",
-    description: "Log vitals, hydration, exercise, and reminders in one place.",
-    icon: HeartPulse,
-  },
-  {
-    title: "AI health coaching",
-    description: "Receive personalized recommendations based on your routine.",
-    icon: MessageCircle,
-  },
-  {
-    title: "Progress rewards",
-    description: "Build streaks, earn badges, and stay motivated daily.",
-    icon: Trophy,
-  },
-];
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { AuthLayout } from "@/components/auth-layout";
+import { ui } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { token, login } = useAuth();
+  const { token, login, hasProfile } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -41,9 +25,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (token) {
-      router.replace("/dashboard");
+      router.replace(hasProfile === false ? "/setup" : "/dashboard");
     }
-  }, [token, router]);
+  }, [token, hasProfile, router]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -90,158 +74,86 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.18),_transparent_20%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.12),_transparent_25%),linear-gradient(180deg,_#f8fbff_0%,_#eef6ff_100%)] py-14">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 sm:px-6 lg:px-8 lg:flex-row lg:items-center">
-        <section className="relative flex-1 overflow-hidden rounded-[2.5rem] border border-[var(--panel-border)] bg-white/95 p-10 shadow-[0_40px_120px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-          <div className="absolute inset-y-0 left-0 w-2 bg-[radial-gradient(circle,_rgba(20,184,166,0.45),transparent_70%)]" />
+    <AuthLayout
+      kicker="Login"
+      title="Welcome back to HealthQuest."
+      subtitle="Sign in to keep tracking your habits, badges, and daily progress."
+      active="login"
+    >
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-[var(--text)]">Email</span>
+          <input
+            autoComplete="email"
+            className={ui.input}
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+          {emailError ? <p className="mt-1.5 text-sm text-red-600">{emailError}</p> : null}
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-[var(--text)]">Password</span>
           <div className="relative">
-            <span className="inline-flex items-center rounded-full border border-[var(--accent)]/20 bg-[var(--accent)]/10 px-3 py-1 text-sm font-semibold text-[var(--accent)]">
-              HealthQuest AI
-            </span>
-            <h1 className="mt-6 text-4xl font-semibold leading-tight tracking-tight text-[var(--text)] sm:text-5xl">
-              Welcome back to health gamification.
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg leading-8 text-[var(--muted)]">
-              Sign in to continue tracking your habits, badges, and daily progress in one thoughtful experience.
-            </p>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-2">
-              {advantages.slice(0, 2).map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.title} className="rounded-[1.75rem] border border-[var(--panel-border)] bg-slate-50 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-                    <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)]">
-                      <Icon size={20} />
-                    </div>
-                    <p className="text-sm font-semibold text-[var(--text)]">{item.title}</p>
-                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{item.description}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-[1.75rem] bg-gradient-to-br from-teal-600 to-cyan-600 p-6 text-white shadow-[0_20px_80px_rgba(15,23,42,0.12)]">
-                <p className="text-sm uppercase tracking-[0.35em] text-cyan-100">Instant motivation</p>
-                <p className="mt-3 text-lg font-semibold">Earn badges that keep your routine fun and rewarding.</p>
-              </div>
-              <div className="rounded-[1.75rem] border border-[var(--panel-border)] bg-white p-6 shadow-sm">
-                <p className="text-sm uppercase tracking-[0.35em] text-[var(--accent)]">Secure by design</p>
-                <p className="mt-3 text-lg font-semibold text-[var(--text)]">Your progress stays private and easy to access.</p>
-              </div>
-            </div>
+            <input
+              autoComplete="current-password"
+              className={`${ui.input} pr-11`}
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((current) => !current)}
+              className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--bg-soft)] hover:text-[var(--text)]"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
-        </section>
+          {passwordError ? <p className="mt-1.5 text-sm text-red-600">{passwordError}</p> : null}
+        </label>
 
-        <section className="flex-1 rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-glow backdrop-blur-xl sm:p-6">
-          <div className="rounded-[2rem] bg-white p-8 shadow-sm">
-            <div className="flex flex-col gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.35em] text-[var(--accent)]">Login</p>
-                <h2 className="mt-3 text-3xl font-semibold text-[var(--text)]">Secure access to your dashboard</h2>
-              </div>
-              <p className="text-sm text-[var(--muted)]">Enter your credentials and continue building healthy habits with smart guidance.</p>
-            </div>
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => router.push("/forgot-password")}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--accent)] hover:brightness-95"
+          >
+            <ArrowLeft size={14} />
+            Forgot password?
+          </button>
+        </div>
 
-            <div className="mt-8 rounded-[2rem] bg-slate-50 p-3 shadow-sm">
-              <div className="grid grid-cols-2 gap-2 rounded-full bg-white/80 p-1 text-sm font-semibold text-[var(--muted)]">
-                <button className="rounded-full bg-[var(--text)] px-4 py-3 text-white">Login</button>
-                <button className="rounded-full bg-transparent px-4 py-3 transition hover:bg-slate-100" type="button" onClick={() => router.push("/register")}>Register</button>
-              </div>
-            </div>
+        {error ? (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
 
-            <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--muted)]">Email</span>
-                <input
-                  autoComplete="email"
-                  className="w-full rounded-[1.75rem] border border-[var(--panel-border)] bg-white/95 px-5 py-3 text-[var(--text)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-                {emailError ? <p className="mt-2 text-sm text-red-600">{emailError}</p> : null}
-              </label>
+        <button className={`w-full ${ui.btnPrimary}`} disabled={submitting} type="submit">
+          {submitting ? (
+            <>
+              <Spinner size={16} className="text-white" />
+              Signing in…
+            </>
+          ) : (
+            "Sign in"
+          )}
+        </button>
+      </form>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--muted)]">Password</span>
-                <div className="relative">
-                  <input
-                    autoComplete="current-password"
-                    className="w-full rounded-[1.75rem] border border-[var(--panel-border)] bg-white/95 px-5 py-3 pr-12 text-[var(--text)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((current) => !current)}
-                    className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-slate-100 text-[var(--accent)] transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                {passwordError ? <p className="mt-2 text-sm text-red-600">{passwordError}</p> : null}
-              </label>
-
-              <div className="flex items-center justify-between text-sm text-[var(--muted)]">
-                <span />
-                <button
-                  type="button"
-                  onClick={() => router.push("/forgot-password")}
-                  className="inline-flex items-center gap-2 font-semibold text-[var(--accent)] hover:text-[var(--text)]"
-                >
-                  <ArrowLeft size={16} />
-                  Forgot password?
-                </button>
-              </div>
-
-              {error ? <p className="rounded-[1.75rem] bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
-
-              <button
-                className="w-full rounded-full bg-[var(--text)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={submitting}
-                type="submit"
-              >
-                {submitting ? (
-                  <div className="inline-flex items-center justify-center gap-2">
-                    <Spinner size={16} className="text-white" />
-                    Signing in...
-                  </div>
-                ) : (
-                  "Sign in"
-                )}
-              </button>
-            </form>
-
-            <div className="mt-6 rounded-[1.75rem] bg-slate-50 p-5 text-center text-sm text-[var(--muted)] shadow-sm">
-              New to HealthQuest? <button type="button" className="font-semibold text-[var(--accent)]" onClick={() => router.push("/register")}>Create an account</button>
-            </div>
-
-            <div className="mt-6 border-t border-[var(--panel-border)] pt-6 text-sm text-[var(--muted)]">
-              <div className="flex items-center gap-3 py-2">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
-                  <ShieldCheck size={18} />
-                </span>
-                <span>Privacy-first health tracking.</span>
-              </div>
-              <div className="flex items-center gap-3 py-2">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
-                  <Zap size={18} />
-                </span>
-                <span>Instant access to personalized coaching.</span>
-              </div>
-              <div className="flex items-center gap-3 py-2">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
-                  <Users size={18} />
-                </span>
-                <span>Designed to keep habits easy and motivating.</span>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
+      <p className="mt-5 text-center text-sm text-[var(--muted)]">
+        New to HealthQuest?{" "}
+        <button
+          type="button"
+          className="font-semibold text-[var(--accent)]"
+          onClick={() => router.push("/register")}
+        >
+          Create an account
+        </button>
+      </p>
+    </AuthLayout>
   );
 }

@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download, Printer } from "lucide-react";
 import { ApiError, createGoal, downloadHealthReportPdf, getLatestHealthReport, getHealthReport, listHealthReports } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { loadHealthReport } from "@/lib/report-storage";
 import type { HealthReportAnalysisResult } from "@/lib/types";
-import { EmptyState, Panel, SectionHeader } from "@/components/ui";
+import { EmptyState, PageHeader, Panel, SectionHeader, ui } from "@/components/ui";
 import { useToasts, ToastContainer } from "@/components/Toast";
 
 type ParsedReportGoal = {
@@ -66,42 +66,32 @@ export default function HealthReportPage() {
     }
 
     let cancelled = false;
-    let attempts = 0;
-    const maxAttempts = 12;
 
+    // A report is produced synchronously by "Generate report" and is already
+    // in local storage before this page opens. Fetch the server copy once to
+    // pick up the canonical version / a specific reportId — no polling.
     const loadReport = async () => {
       try {
-        const latest = requestedReportId ? await getHealthReport(token, requestedReportId) : await getLatestHealthReport(token);
-        if (!cancelled) {
-          setReport(latest);
-          setLoadError(null);
-          setIsLoadingReport(false);
-        }
+        const latest = requestedReportId
+          ? await getHealthReport(token, requestedReportId)
+          : await getLatestHealthReport(token);
+        if (cancelled) return;
+        setReport(latest);
+        setLoadError(null);
       } catch (caughtError) {
         if (cancelled) return;
         if (caughtError instanceof ApiError && caughtError.status === 404) {
-          attempts += 1;
-          if (attempts < maxAttempts) {
-            window.setTimeout(() => {
-              if (!cancelled) {
-                void loadReport();
-              }
-            }, 3000);
-            return;
-          }
-
-          if (savedReport) {
-            setReport(savedReport);
-          } else {
-            setReport(null);
-          }
-          setIsLoadingReport(false);
-          return;
+          // No server report yet: fall back to the locally saved one (if any),
+          // otherwise show the empty state. Nothing is generating in the background.
+          setReport(savedReport ?? null);
+        } else {
+          setLoadError(
+            caughtError instanceof ApiError ? caughtError.message : "Unable to load the saved report.",
+          );
+          setReport(savedReport ?? null);
         }
-
-        setLoadError(caughtError instanceof ApiError ? caughtError.message : "Unable to load the saved report.");
-        setReport(savedReport);
-        setIsLoadingReport(false);
+      } finally {
+        if (!cancelled) setIsLoadingReport(false);
       }
     };
 
@@ -110,7 +100,7 @@ export default function HealthReportPage() {
     return () => {
       cancelled = true;
     };
-  }, [token, savedReport]);
+  }, [token, savedReport, requestedReportId]);
 
   const visibleSections = useMemo(() => {
     const parsedSections = (report?.sections ?? []).filter(
@@ -173,25 +163,34 @@ export default function HealthReportPage() {
     }
   };
 
+  const backToHealth = (
+    <Link href="/dashboard/health" className={`${ui.btnSecondary} print:hidden`}>
+      <ArrowLeft size={16} />
+      Back to health
+    </Link>
+  );
+
   if (!report) {
     return (
       <div className="space-y-6">
         <ToastContainer toasts={toasts} onDismiss={removeToast} />
-        <Panel>
-          <SectionHeader
-            title="Prepared report"
-            subtitle={isLoadingReport ? "Generating your report. This can take a few moments while the backend finishes the analysis." : "No saved report was found. Run Analyze my report from the health page first."}
-            action={
-              <Link href="/dashboard/health" className="inline-flex items-center gap-2 rounded-full bg-[var(--text)] px-4 py-2 text-sm font-medium text-white">
-                <ArrowLeft size={16} />
-                Back to health
-              </Link>
-            }
-          />
-        </Panel>
+        <PageHeader
+          kicker="Health"
+          title="Prepared report"
+          description={
+            isLoadingReport
+              ? "Loading your latest report…"
+              : "No report yet — generate one from the Health page."
+          }
+          actions={backToHealth}
+        />
         <EmptyState
-          title={isLoadingReport ? "Preparing report…" : "Report not available"}
-          description={isLoadingReport ? "The backend is still generating the report. Please wait a moment and the report will appear here automatically." : "Generate the report first, then open this page to review or print it."}
+          title={isLoadingReport ? "Loading report…" : "Report not available"}
+          description={
+            isLoadingReport
+              ? "Fetching your latest report."
+              : "Generate the report first from the Health page, then open this page to review or print it."
+          }
         />
       </div>
     );
@@ -201,99 +200,133 @@ export default function HealthReportPage() {
     <div className="space-y-6 print:space-y-0">
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
 
-      <Panel className="print:hidden">
-        <SectionHeader
+      <div className="print:hidden">
+        <PageHeader
+          kicker="Health"
           title={report.report_title || "Prepared report"}
-          subtitle="A polished, printable summary of your analyzed health data."
-          action={
-            <div className="flex flex-wrap items-center gap-2">
+          description="A polished, printable summary of your analyzed health data."
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className={ui.btnSecondary}
+              >
+                <Printer size={16} />
+                Print
+              </button>
               <button
                 type="button"
                 onClick={handleDownloadPdf}
                 disabled={downloadPdfLoading || !report.id}
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] bg-white px-4 py-2 text-sm font-semibold text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
+                className={ui.btnPrimary}
               >
+                <Download size={16} />
                 {downloadPdfLoading ? "Downloading…" : "Download PDF"}
               </button>
-              <Link href="/dashboard/health" className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-4 py-2 text-sm font-semibold text-[var(--text)]">
-                <ArrowLeft size={16} />
-                Back to health
-              </Link>
-            </div>
+              {backToHealth}
+            </>
           }
         />
-      </Panel>
+      </div>
 
       {loadError ? (
-        <div className="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 print:hidden">
           {loadError}
         </div>
       ) : null}
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm print:border-slate-200 print:bg-white">
+      {/* Report meta */}
+      <div className={`${ui.card} p-6`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-700">Prepared for</p>
-            <p className="mt-2 text-xl font-semibold text-slate-950">{patientName}{patientSex}</p>
-            {reportDate ? <p className="mt-1 text-sm text-slate-600">Report date: {reportDate}</p> : null}
+            <p className={ui.label}>Prepared for</p>
+            <p className="mt-1.5 text-lg font-semibold text-[var(--text)]">
+              {patientName}
+              {patientSex}
+            </p>
+            {reportDate ? (
+              <p className="mt-1 text-xs text-[var(--muted)]">Report date: {reportDate}</p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700">{report.is_complete ? "Complete" : "Partial"}</span>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700">Confidence: {Math.round((report.confidence ?? 0) * 100)}%</span>
-            {report.watermark ? <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700">{report.watermark}</span> : null}
+            <span className={ui.chip}>{report.is_complete ? "Complete" : "Partial"}</span>
+            <span className={ui.chip}>
+              Confidence {Math.round((report.confidence ?? 0) * 100)}%
+            </span>
+            {report.watermark ? (
+              <span className="inline-flex items-center rounded-full bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-medium text-[var(--muted)]">
+                {report.watermark}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm print:border-slate-200 print:bg-white">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-700">Report history</p>
-            <h2 className="mt-2 text-xl font-semibold text-slate-950">Recent reports you can reopen</h2>
-          </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">{isLoadingHistory ? "Loading…" : `${reportHistory.length} saved`}</span>
-        </div>
+      {/* Report history */}
+      <Panel className="print:hidden">
+        <SectionHeader
+          title="Report history"
+          subtitle="Recent reports you can reopen"
+          action={
+            <span className={ui.chip}>
+              {isLoadingHistory ? "Loading…" : `${reportHistory.length} saved`}
+            </span>
+          }
+        />
         {reportHistory.length > 0 ? (
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 divide-y divide-[var(--panel-border)]">
             {reportHistory.slice(0, 4).map((historyItem) => (
               <Link
                 key={historyItem.id}
                 href={`/dashboard/health/report?reportId=${historyItem.id}`}
-                className="flex flex-col gap-1 border-b border-slate-200 pb-3 text-sm text-slate-600 last:border-b-0 last:pb-0"
+                className="flex flex-col gap-1 py-3 text-sm transition first:pt-0 last:pb-0 hover:opacity-80"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-slate-950">{historyItem.report_title || "Health report"}</p>
-                  <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                  <p className="font-medium text-[var(--text)]">
+                    {historyItem.report_title || "Health report"}
+                  </p>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                     {historyItem.is_complete ? "Complete" : "Partial"}
                   </span>
                 </div>
-                <p>{historyItem.created_at ? new Date(historyItem.created_at).toLocaleString() : "Generated recently"}</p>
-                <p className="text-slate-500">Confidence: {Math.round((historyItem.confidence ?? 0) * 100)}%</p>
+                <p className="text-xs text-[var(--muted)]">
+                  {historyItem.created_at
+                    ? new Date(historyItem.created_at).toLocaleString()
+                    : "Generated recently"}
+                  {" · "}Confidence {Math.round((historyItem.confidence ?? 0) * 100)}%
+                </p>
               </Link>
             ))}
           </div>
         ) : (
-          <p className="mt-5 text-sm text-slate-600">No saved reports yet. Generate one from the health dashboard to see a history here.</p>
+          <p className="mt-4 text-sm text-[var(--muted)]">
+            No saved reports yet. Generate one from the Health page to see a history here.
+          </p>
         )}
-      </section>
+      </Panel>
 
-      <div className="space-y-4 print:space-y-0">
+      {/* Report body */}
+      <div className={`${ui.card} p-6 print:border-0 print:p-0 print:shadow-none`}>
         {visibleSections.length > 0 ? (
-          <section className="space-y-4">
+          <div className="divide-y divide-[var(--panel-border)]">
             {visibleSections.map((section) => (
-              <div key={section.title} className="border-b border-slate-200 pb-4 last:border-b-0 last:pb-0">
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-700">{section.title}</p>
-                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700">{section.content || "Not provided"}</p>
+              <div key={section.title} className="py-4 first:pt-0 last:pb-0">
+                <p className={ui.label}>{section.title}</p>
+                <p className="mt-2 whitespace-pre-line text-sm leading-7 text-[var(--text)]">
+                  {section.content || "Not provided"}
+                </p>
               </div>
             ))}
-          </section>
+          </div>
         ) : (
-          <section className="border-b border-slate-200 pb-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-700">Structured report</p>
-            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700">
-              {report.report_text || "The backend generated the report content, but the structured sections were not available for this view."}
+          <div>
+            <p className={ui.label}>Structured report</p>
+            <p className="mt-2 whitespace-pre-line text-sm leading-7 text-[var(--text)]">
+              {report.report_text ||
+                "The backend generated the report content, but the structured sections were not available for this view."}
             </p>
-          </section>
+          </div>
         )}
       </div>
 

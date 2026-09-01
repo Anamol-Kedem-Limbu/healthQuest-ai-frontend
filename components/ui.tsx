@@ -3,33 +3,107 @@
 import React from "react";
 import { SkeletonBlock } from "./skeleton";
 
+/* ------------------------------------------------------------------ *
+ * Design system — shared visual tokens (class strings)
+ * One source of truth so every dashboard page looks like one product.
+ * ------------------------------------------------------------------ */
+export const ui = {
+  // Surfaces
+  panel: "rounded-2xl border border-[var(--panel-border)] bg-white shadow-sm",
+  card: "rounded-xl border border-[var(--panel-border)] bg-white shadow-xs",
+  subtle: "rounded-lg border border-[var(--panel-border)] bg-[var(--bg-soft)]",
+  // Typography
+  kicker: "text-xs font-bold uppercase tracking-[0.15em] text-[var(--accent)]",
+  pageTitle: "text-3xl font-bold tracking-tight text-[var(--text)]",
+  sectionTitle: "text-lg font-bold text-[var(--text)]",
+  cardTitle: "text-sm font-semibold text-[var(--text)]",
+  body: "text-sm text-[var(--text)]",
+  muted: "text-sm text-[var(--muted)]",
+  meta: "text-xs text-[var(--muted)]",
+  label: "text-xs font-medium uppercase tracking-wide text-[var(--muted)]",
+  // Controls
+  btnPrimary:
+    "inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50",
+  btnSecondary:
+    "inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--panel-border)] bg-white px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:bg-[var(--bg-soft)] disabled:cursor-not-allowed disabled:opacity-50",
+  btnGhost:
+    "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--bg-soft)] hover:text-[var(--text)] disabled:opacity-50",
+  btnDanger:
+    "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50",
+  input:
+    "w-full rounded-lg border border-[var(--panel-border)] bg-[var(--bg-soft)] px-3 py-2 text-sm text-[var(--text)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 disabled:opacity-60",
+  chip: "inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--accent)]",
+  iconBadge:
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)]/10 text-[var(--accent)]",
+  modalOverlay: "fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm",
+  modalCard: "w-full max-w-md rounded-2xl border border-[var(--panel-border)] bg-white p-6 shadow-lg",
+} as const;
+
 export function Panel({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return <section className={`rounded-[2rem] border border-[var(--panel-border)] bg-white/80 p-6 backdrop-blur-xl ${className}`}>{children}</section>;
+  return (
+    <section className={`${ui.panel} p-6 ${className}`}>
+      {children}
+    </section>
+  );
 }
 
 export function Card({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return <div className={`rounded-[1.8rem] border border-[var(--panel-border)] bg-[var(--bg-soft)] p-4 ${className}`}>{children}</div>;
+  return (
+    <div className={`${ui.card} p-4 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+export function PageHeader({
+  kicker,
+  title,
+  description,
+  actions,
+}: {
+  kicker?: string;
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        {kicker ? <p className={ui.kicker}>{kicker}</p> : null}
+        <h1 className={`${kicker ? "mt-2" : ""} ${ui.pageTitle}`}>{title}</h1>
+        {description ? <p className="mt-1 text-sm text-[var(--muted)]">{description}</p> : null}
+      </div>
+      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+    </div>
+  );
 }
 
 export function SectionHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">{title}</p>
-        {subtitle ? <p className="mt-2 text-sm text-[var(--muted)]">{subtitle}</p> : null}
+        <p className={ui.kicker}>{title}</p>
+        {subtitle ? (
+          <h2 className={`mt-2 ${ui.sectionTitle}`}>{subtitle}</h2>
+        ) : null}
       </div>
-      {action ? <div className="pt-1">{action}</div> : null}
+      {action ? <div className="pt-0.5">{action}</div> : null}
     </div>
   );
 }
 
-export function EmptyState({ title, description, className = "" }: { title: string; description: string; className?: string }) {
+export function EmptyState({ title, description, className = "", action }: { title: string; description: string; className?: string; action?: React.ReactNode }) {
   return (
-    <div className={`rounded-[1.8rem] border border-[var(--panel-border)] bg-[var(--bg-soft)] p-6 text-sm text-[var(--muted)] ${className}`}>
-      <p className="font-semibold text-[var(--text)]">{title}</p>
-      <p className="mt-2">{description}</p>
+    <div className={`rounded-xl border border-dashed border-[var(--panel-border)] bg-[var(--bg-soft)] p-8 text-center ${className}`}>
+      <p className="text-sm font-semibold text-[var(--text)]">{title}</p>
+      <p className="mx-auto mt-2 max-w-sm text-sm text-[var(--muted)]">{description}</p>
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </div>
   );
+}
+
+export function SkeletonBar({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-[var(--panel-border)] ${className}`} />;
 }
 
 export function LoadingSection({ lines = 3, className = "" }: { lines?: number; className?: string }) {
@@ -122,10 +196,12 @@ export function GoalProgressRing({
 
       {/* inner label with subtle white background to remove halo overlap */}
       <div
-        className="absolute flex items-center justify-center"
-        style={{ width: Math.max(20, Math.round(size * 0.5)), height: Math.max(20, Math.round(size * 0.5)), borderRadius: Math.round(size * 0.5), background: "white" }}
+        className="absolute flex items-center justify-center bg-white"
+        style={{ width: Math.max(20, Math.round(size * 0.5)), height: Math.max(20, Math.round(size * 0.5)), borderRadius: Math.round(size * 0.5) }}
       >
-        <span className={`font-bold ${palette.text}`} style={{ fontSize: labelSize }}>{Math.round(percentage)}%</span>
+        <span className={`font-bold ${palette.text}`} style={{ fontSize: labelSize }}>
+          {Math.round(percentage)}%
+        </span>
       </div>
     </div>
   );
