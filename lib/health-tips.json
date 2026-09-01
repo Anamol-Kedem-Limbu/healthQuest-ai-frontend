@@ -1,0 +1,116 @@
+[
+  {
+    "id": "hydrate-before-coffee",
+    "title": "Hydrate before caffeine",
+    "category": "Hydration",
+    "message": "Drink a glass of water before your first coffee or tea to start the day with a quick hydration win."
+  },
+  {
+    "id": "five-minute-walk",
+    "title": "Take a five-minute walk",
+    "category": "Movement",
+    "message": "A short walk after a meal can help you reset, improve circulation, and build a stronger daily movement habit."
+  },
+  {
+    "id": "screen-break",
+    "title": "Reset your posture",
+    "category": "Recovery",
+    "message": "Stand up, roll your shoulders, and look far away for 20 seconds to give your eyes and back a quick break."
+  },
+  {
+    "id": "protein-breakfast",
+    "title": "Add protein early",
+    "category": "Nutrition",
+    "message": "Include a protein-rich breakfast to help steady energy and reduce afternoon snacking swings."
+  },
+  {
+    "id": "medication-routine",
+    "title": "Pair meds with a habit",
+    "category": "Medication",
+    "message": "Tie medication reminders to an existing habit like brushing your teeth so it becomes easier to remember."
+  },
+  {
+    "id": "sleep-wind-down",
+    "title": "Create a wind-down cue",
+    "category": "Sleep",
+    "message": "Dim the lights, lower the volume, and repeat the same bedtime steps to tell your body it is time to rest."
+  },
+  {
+    "id": "water-bottle",
+    "title": "Keep water visible",
+    "category": "Hydration",
+    "message": "Place a water bottle in your line of sight so drinking water becomes the easiest default choice."
+  },
+  {
+    "id": "mobility-snack",
+    "title": "Do a mobility snack",
+    "category": "Movement",
+    "message": "A 2-minute stretch session between tasks can keep energy up without needing a full workout."
+  },
+  {
+    "id": "breathing-reset",
+    "title": "Take a breathing reset",
+    "category": "Stress",
+    "message": "Try four slow breaths in and out to calm your nervous system and sharpen focus before the next task."
+  },
+  {
+    "id": "walk-and-talk",
+    "title": "Turn a call into a walk",
+    "category": "Movement",
+    "message": "If a meeting does not need a screen, turn it into a walking call and collect steps without extra effort."
+  },
+  {
+    "id": "healthy-snack",
+    "title": "Pre-plan a healthy snack",
+    "category": "Nutrition",
+    "message": "Choose one snack ahead of time so you can stay consistent when hunger shows up later in the day."
+  },
+  {
+    "id": "sunlight-morning",
+    "title": "Get morning light",
+    "category": "Energy",
+    "message": "A few minutes of morning sunlight can help set your rhythm and support better sleep later tonight."
+  },
+  {
+    "id": "step-goal",
+    "title": "Set a small step target",
+    "category": "Goals",
+    "message": "Pick a tiny step target for today and make it easy to win before the day gets busy."
+  },
+  {
+    "id": "water-after-workout",
+    "title": "Refill after activity",
+    "category": "Hydration",
+    "message": "After exercise, drink water first so recovery starts immediately and your body stays ahead of fatigue."
+  },
+  {
+    "id": "meal-pacing",
+    "title": "Slow down meals",
+    "category": "Nutrition",
+    "message": "Pause halfway through a meal to notice fullness and help your body catch up with your appetite."
+  },
+  {
+    "id": "desk-reset",
+    "title": "Reset your desk posture",
+    "category": "Recovery",
+    "message": "Uncross your legs, plant your feet, and relax your shoulders to reduce tension while you work."
+  },
+  {
+    "id": "evening-walk",
+    "title": "Walk after dinner",
+    "category": "Movement",
+    "message": "A relaxed evening walk can support digestion and create a clean transition into rest mode."
+  },
+  {
+    "id": "gratitude-check",
+    "title": "Notice one win",
+    "category": "Mindset",
+    "message": "Write down one thing you did well today to keep momentum and reinforce healthy habits."
+  },
+  {
+    "id": "phone-free-break",
+    "title": "Take a phone-free break",
+    "category": "Focus",
+    "message": "Give your brain a short offline pause so you can come back with better attention and less fatigue."
+  }
+]
